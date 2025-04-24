@@ -1,0 +1,20 @@
+/* src/styles/SidebarAdmin.css */
+.sidebar-admin {
+    background-color: var(--color-base);
+    min-height: 100vh;
+    padding: 1rem;
+  }
+  
+  .sidebar-admin .nav-link {
+    color: var(--color-texto) !important;
+    margin-bottom: 0.5rem;
+    transition: color 0.3s, background-color 0.3s;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+  }
+  
+  .sidebar-admin .nav-link:hover {
+    background-color: var(--color-neon-hover);
+    color: #000 !important;
+  }
+  

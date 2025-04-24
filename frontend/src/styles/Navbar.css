@@ -1,0 +1,67 @@
+/* Fondo oscuro y limpio, sin sombra excesiva */
+.navbar-custom {
+    background-color: var(--color-base) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s, box-shadow 0.3s;
+    padding: 0.5rem 1rem; /* Espaciado interno */
+    position: fixed; /* Fijar el navbar en la parte superior */
+    width: 100%; /* Asegurarse de que ocupe todo el ancho */
+    z-index: 1000; /* Asegurarse de que esté por encima de otros elementos */
+    margin-bottom: 50px; /* Espacio entre el navbar y el contenido */
+  }
+  
+  /* Al hacer scroll se puede reducir la sombra, si se desea */
+  .navbar-custom.scrolled {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    background-color: var(--color-base) !important;
+  }
+  
+  /* Enlaces del Navbar: claros y con efecto de transición */
+  .navbar-custom .nav-link {
+    color: var(--color-texto) !important;
+    font-weight: 500;
+    transition: color 0.3s;
+  }
+  
+  /* Hover: cambia a un color de acento (puedes definir var(--color-accent)) */
+  .navbar-custom .nav-link:hover {
+    color: var(--color-neon2) !important;
+    animation: neonPulse 1.5s infinite;
+  }
+  
+  /* Brand: mostramos el logo y aplicamos una transición sutil sin exagerar el efecto */
+  .navbar-custom .navbar-brand {
+    transition: transform 0.3s;
+  }
+  
+  .navbar-custom .navbar-brand:hover {
+    transform: scale(1.15);
+  }
+  
+  /* Toggler: diseño más sutil */
+  .navbar-custom .navbar-toggler {
+    border: none;
+    background-color: transparent;
+    outline: none;
+  }
+  
+  .navbar-custom .navbar-toggler-icon {
+    filter: invert(1); /* Para que el icono se vea claro en fondo oscuro */
+  }
+  
+  /* Si deseas agregar un efecto extra para algún texto con neón, puedes usar el siguiente
+     pero lo dejamos aplicado solo a clases específicas para no sobrecargar el navbar */
+  .neon-pulse {
+    color: var(--color-neon2);
+    animation: neonPulse 1.5s infinite;
+  }
+  
+  @keyframes neonPulse {
+    0%, 100% {
+      text-shadow: 0 0 10px var(--color-neon2), 0 0 15px var(--color-neon2), 0 0 25px var(--color-neon2);
+    }
+    50% {
+      text-shadow: 0 0 25px var(--color-neon2), 0 0 50px var(--color-neon2), 0 0 75px var(--color-neon2);
+    }
+  }
+  

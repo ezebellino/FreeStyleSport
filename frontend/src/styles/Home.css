@@ -1,0 +1,51 @@
+/* src/styles/Home.css */
+.home-hero {
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+              url('../assets/stadium.png') center center/cover no-repeat;
+  position: relative;
+  height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.home-content {
+  text-align: center;
+  color: #ffffff;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.home-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.home-subtitle {
+  font-size: 1.75rem;
+  margin-bottom: 2rem;
+  line-height: 1.4;
+}
+
+/* Contenedor para el botón principal */
+.home-main-actions {
+  margin-bottom: 2rem;
+}
+
+/* Contenedor para las acciones secundarias */
+.home-secondary-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Cada acción secundaria */
+.home-secondary-actions .action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

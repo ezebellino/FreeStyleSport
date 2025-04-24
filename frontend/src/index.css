@@ -1,0 +1,133 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+:root {
+  --color-bg: #0d0d0d;
+  --color-surface: #1a1a1a;
+  --color-primary: #ffffff;
+  --color-secondary: #e0e0e0;
+  --color-accent: #ff3c38; /* rojo vibrante */
+  --color-accent2: #3ca9ff; /* azul eléctrico */
+  --color-hover: #2ecc71;
+  --font-main: 'Inter', sans-serif;
+  --radius: 12px;
+  --color-base: #1f1f1f;        /* Fondo oscuro */
+  --color-texto: #ffffff;       /* Texto en blanco */
+  --color-neon: #39ff14;        /* Verde neón, si lo deseas para acentos */
+  --color-neon-hover: #32e50f;  /* Variante para hover */
+  --color-neon2: #d9bf2a;       /* Por ejemplo, rosa neón para efectos específicos */
+}
+
+* {
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-primary);
+  font-family: var(--font-main);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--color-accent2);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+a:hover {
+  color: var(--color-hover);
+}
+
+button, .btn {
+  border-radius: var(--radius);
+  border: none;
+  padding: 10px 20px;
+  background: var(--color-accent);
+  color: white;
+  font-weight: bold;
+  transition: all 0.3s ease-in-out;
+}
+
+button:hover, .btn:hover {
+  transform: scale(1.05);
+  background: var(--color-hover);
+  box-shadow: 0 4px 20px rgba(0, 255, 128, 0.3);
+}
+
+input, select, textarea {
+  background: var(--color-surface);
+  border: 1px solid #333;
+  padding: 0.75rem 1rem;
+  color: var(--color-primary);
+  border-radius: var(--radius);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  line-height: 1.3;
+  color: var(--color-secondary);
+  text-align: center;
+}
+
+section {
+  padding: 2rem 1rem;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+/* App.css */
+#root {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 4em;
+  transition: transform 0.3s ease, filter 0.3s ease;
+  filter: drop-shadow(0 0 0.75rem rgba(255, 255, 255, 0.15));
+}
+
+.logo:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 1rem var(--color-accent2));
+}
+
+.card {
+  background: var(--color-surface);
+  padding: 2rem;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.1);
+}
+
+.read-the-docs {
+  color: #888;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
