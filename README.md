@@ -36,3 +36,39 @@ FreestyleSport/
 ├── requirements.txt       # Dependencias del backend
 ├── .gitignore             # Ignora archivos innecesarios
 └── README.md              # Este archivo
+
+```
+
+---
+
+🧠 Objetivo del proyecto
+El propósito de este proyecto es:
+
+Desarrollar una tienda online funcional.
+
+Aprender tecnologías modernas del ecosistema web.
+
+Construir una base sólida para proyectos similares que puedan surgir localmente (minimercados, almacenes, etc.).
+
+Aplicar buenas prácticas de arquitectura y desarrollo fullstack.
+
+---
+
+🔄 Próximos pasos
+Incluir imágenes y capturas de pantalla.
+
+Agregar instrucciones de instalación y despliegue.
+
+Mejorar la documentación para contribuir fácilmente.
+
+Integrar CI/CD con GitHub Actions o similar.
+
+---
+
+✍️ Autor
+Ezequiel Bellino – GitHub Profile
+
+---
+
+📄 Licencia
+Este proyecto está licenciado bajo los términos de la Licencia MIT. Puedes consultar el archivo LICENSE para más detalles.
