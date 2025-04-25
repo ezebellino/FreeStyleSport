@@ -5,7 +5,16 @@ from .database import engine, Base
 from .auth import router as auth_router
 
 
-app = FastAPI()
+app = FastAPI(
+    title="FreestyleSport API",
+    description="API para el backend del proyecto E-commerce FreestyleSport",
+    version="1.0.0",
+    contact={
+        "name": "Ezequiel Bellino",
+        "url": "https://github.com/ezebellino",
+        "email": "ezequielbellino@gmail.com",
+    },
+)
 
 
 app.add_middleware(

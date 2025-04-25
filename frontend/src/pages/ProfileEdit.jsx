@@ -1,14 +1,15 @@
-// src/pages/Profile.jsx
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Alert, Image } from 'react-bootstrap';
 import axios from 'axios';
 import ImageUploader from '../components/ImageUploader';
 import img_avatar from '../assets/default-avatar.png';
+import { useNavigate } from 'react-router-dom';
 
-const Profile = () => {
+const ProfileEdit = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     address: '',
     email: '',
     avatar_url: '',
@@ -20,17 +21,19 @@ const Profile = () => {
     axios.get('http://127.0.0.1:8000/users/me', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     })
-    .then(response => {
-      setProfile(response.data);
-    })
-    .catch(err => {
-      console.error(err);
-      setError('Error al cargar el perfil');
-    });
+      .then(res => {
+        const data = res.data;
+        setProfile({
+          ...data,
+          first_name: data.first_name,
+          last_name: data.last_name,
+        });
+      })
+      .catch(() => setError('Error al cargar el perfil'));
   }, []);
 
   const handleChange = (e) => {
-    setProfile({...profile, [e.target.name]: e.target.value});
+    setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
@@ -68,42 +71,42 @@ const Profile = () => {
           <ImageUploader onUpload={handleImageUpload} />
         </Form.Group>
         <div className="mb-3">
-          <Image 
-            src={profile.avatar_url || img_avatar} 
+          <Image
+            src={profile.avatar_url || img_avatar}
             rounded-circle
-            style={{ maxWidth: '250px', maxHeight: '250px', borderRadius: '50%' }} 
-            width={150} 
-            alt="Avatar" 
+            style={{ maxWidth: '250px', maxHeight: '250px', borderRadius: '50%' }}
+            width={150}
+            alt="Avatar"
           />
         </div>
         <Form.Group className="mb-3">
           <Form.Label>Nombre</Form.Label>
-          <Form.Control 
-            type="text" 
-            name="firstName" 
-            value={profile.firstName} 
-            onChange={handleChange} 
+          <Form.Control
+            type="text"
+            name="first_name"   // ANTES: "firstName"
+            value={profile.first_name || ''}
+            onChange={handleChange}
           />
         </Form.Group>
         <Form.Group className="mb-3">
           <Form.Label>Apellido</Form.Label>
-          <Form.Control 
-            type="text" 
-            name="lastName" 
-            value={profile.lastName} 
-            onChange={handleChange} 
+          <Form.Control
+            type="text"
+            name="last_name"    // ANTES: "lastName"
+            value={profile.last_name || ''}
+            onChange={handleChange}
           />
         </Form.Group>
         <Form.Group className="mb-3">
           <Form.Label>Dirección</Form.Label>
-          <Form.Control 
-            type="text" 
-            name="address" 
-            value={profile.address} 
-            onChange={handleChange} 
+          <Form.Control
+            type="text"
+            name="address"
+            value={profile.address}
+            onChange={handleChange}
           />
         </Form.Group>
-        <Button variant="primary" type="submit">
+        <Button variant="primary" type="submit" onClick={() => navigate('/dashboard/profile')}>
           Actualizar Perfil
         </Button>
       </Form>
@@ -111,4 +114,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default ProfileEdit;

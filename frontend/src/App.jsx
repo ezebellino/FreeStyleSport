@@ -5,7 +5,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import DashboardUser from './pages/DashboardUser.jsx';
 import DashboardAdmin from './pages/DashboardAdmin.jsx';
-import Profile from './pages/Profile.jsx';
+import ProfileEdit from './pages/ProfileEdit.jsx';
 import PurchaseHistory from './pages/PurchaseHistory.jsx';
 import Coupons from './pages/Coupons.jsx';
 import ProductList from './pages/ProductList';
@@ -18,8 +18,8 @@ import { setCredentials } from './features/userSlice';
 import axios from 'axios';
 import Login from './pages/Login';
 import RegistrationForm from './pages/RegistrationForm';
-import Checkout from './pages/Checkout';
 import NotFound from './pages/NotFound';
+import ProfileView from './pages/ProfileView.jsx';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -58,7 +58,8 @@ const App = () => {
         <Route path="/products/:id" element={<ProductDetail />} />
         {/* Dashboard de Usuario */}
         <Route path="/dashboard" element={<DashboardUser />}>
-          <Route path="profile" element={<Profile />} />
+          <Route path="profile" element={<ProfileView />} />
+          <Route path="profile/edit" element={<ProfileEdit />} />
           <Route path="history" element={<PurchaseHistory />} />
           <Route path="coupons" element={<Coupons />} />
         </Route>

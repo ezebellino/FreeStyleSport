@@ -3,11 +3,16 @@ import React from 'react';
 import { Nav } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import '../styles/SidebarAdmin.css';
+import ProfileView from '../pages/ProfileView';
+import ProfileEdit from '../pages/ProfileEdit';
 
 const SidebarAdmin = () => {
   return (
     <Nav className="flex-column sidebar-admin" style={{ backgroundColor: '#343a40', height: '100vh', padding: '20px', borderRadius: '0.5rem' }}>
-      <Nav.Link as={Link} to="/dashboard/profile" className="text-center text-white">Perfil</Nav.Link>
+      <Nav.Link as={Link} to="/dashboard/profile" className="text-center text-white" element={<ProfileView/>} >Perfil</Nav.Link>
+
+      <hr />
+      <Nav.Link as={Link} to="/dashboard/profile/edit" className="text-center text-white" element={<ProfileEdit />} >Editar Perfil</Nav.Link>
       <Nav.Link as={Link} to="/dashboard/orders" className="text-center text-white">Historial de Compras</Nav.Link>
       <hr />
       {/* Rutas para Admin (asegúrate de que estas rutas sean las definidas en DashboardAdmin) */}

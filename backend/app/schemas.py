@@ -14,19 +14,26 @@ class UserCreate(UserBase):
     
 class UserShow(UserBase):
     id: int
-    is_admin: bool = False  # Solo para admins
+    is_admin: bool = False
     avatar_url: Optional[str] = None  
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    address: Optional[str] = None
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
     class Config:
-       from_attributes = True
-       
+        from_attributes = True
+
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
     avatar_url: Optional[str] = None  
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    address: Optional[str] = None
+
     class Config:
         from_attributes = True
 
