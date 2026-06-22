@@ -1,74 +1,53 @@
-# 🛍️ FreestyleSport
+﻿# FreestyleSport
 
-**FreestyleSport** es un proyecto de E-commerce desarrollado como una iniciativa personal para aprender y adquirir experiencia en el desarrollo de aplicaciones web fullstack. Su estructura y organización están pensadas para ser reutilizadas en otros proyectos similares como tiendas, almacenes o minimercados.
+Mobile-first commerce for sports apparel, footwear, and accessories.
 
----
+## Services
 
-## 🚀 Tecnologías utilizadas
+- `frontend/`: Next.js public store and staff interface.
+- `backend/`: FastAPI commerce API.
+- `legacy/`: read-only prototype retained until feature parity.
 
-### 🔧 Backend
-- **[FastAPI](https://fastapi.tiangolo.com/)** – framework para construir APIs web modernas y rápidas.
-- **SQLAlchemy** – ORM para manejar la base de datos.
-- **Alembic** – herramienta de migraciones de base de datos.
-- **Pydantic** – validación y serialización de datos.
-- **Uvicorn** – servidor ASGI para ejecutar la aplicación FastAPI.
-- **Bcrypt** – manejo de contraseñas seguras.
-- **email-validator** – validación de emails.
-- **requests** – cliente HTTP.
+## Local prerequisites
 
-### 🌐 Frontend
-- **React** – librería para construir interfaces de usuario.
-- **Vite** – bundler moderno para React.
-- **JavaScript (ES6+)**
+- Node.js 22 and npm 10.
+- Python 3.13.
+- PostgreSQL 16 or a Railway PostgreSQL development database.
+- Docker for production-image verification.
 
----
+## Backend
 
-## 📁 Estructura del proyecto
-
-```bash
-FreestyleSport/
-├── backend/
-│   ├── app/               # Lógica de negocio y rutas
-│   ├── alembic/           # Migraciones de base de datos
-│   └── database.db        # Base de datos SQLite
-├── frontend/              # Aplicación React
-│   └── src/               # Componentes y páginas
-├── requirements.txt       # Dependencias del backend
-├── .gitignore             # Ignora archivos innecesarios
-└── README.md              # Este archivo
-
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".\backend[dev]"
+Copy-Item backend\.env.example backend\.env
+$env:PYTHONPATH="backend"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload
 ```
 
----
+## Frontend
 
-🧠 Objetivo del proyecto
-El propósito de este proyecto es:
+```powershell
+Copy-Item frontend\.env.example frontend\.env.local
+npm.cmd ci --prefix frontend
+npm.cmd run dev --prefix frontend
+```
 
-Desarrollar una tienda online funcional.
+## Verification
 
-Aprender tecnologías modernas del ecosistema web.
+```powershell
+.\.venv\Scripts\python.exe -m ruff check backend
+.\.venv\Scripts\python.exe -m pytest backend\tests -q
+npm.cmd run lint --prefix frontend
+npm.cmd run typecheck --prefix frontend
+npm.cmd run test:run --prefix frontend
+npm.cmd run build --prefix frontend
+docker build -t freestyle-api:local backend
+docker build -t freestyle-web:local frontend
+```
 
-Construir una base sólida para proyectos similares que puedan surgir localmente (minimercados, almacenes, etc.).
+## Railway
 
-Aplicar buenas prácticas de arquitectura y desarrollo fullstack.
+Create one Railway project with PostgreSQL plus two GitHub services. Set the API root directory to `backend` and the web root directory to `frontend`. Reference PostgreSQL's `DATABASE_URL` from the API service, configure exact `CORS_ORIGINS`, and generate HTTPS domains for both services. The API runs Alembic before deployment and both services expose healthchecks declared in their `railway.toml` files.
 
----
-
-🔄 Próximos pasos
-Incluir imágenes y capturas de pantalla.
-
-Agregar instrucciones de instalación y despliegue.
-
-Mejorar la documentación para contribuir fácilmente.
-
-Integrar CI/CD con GitHub Actions o similar.
-
----
-
-✍️ Autor
-Ezequiel Bellino – GitHub Profile
-
----
-
-📄 Licencia
-Este proyecto está licenciado bajo los términos de la Licencia MIT. Puedes consultar el archivo LICENSE para más detalles.
+The approved design is in `docs/superpowers/specs/2026-06-21-freestyle-sport-commerce-design.md`.
