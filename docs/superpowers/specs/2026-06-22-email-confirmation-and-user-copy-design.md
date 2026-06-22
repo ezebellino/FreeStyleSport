@@ -26,7 +26,7 @@ Resend is the preferred email provider for this phase because its official prici
 - Development/test fallback that records the confirmation link without sending real mail.
 - Railway environment variable documentation.
 - Public UI copy cleanup to remove implementation terms.
-- Initial superadmin account uses `ezequielbellino@gmail.com`.
+- Initial superadmin account uses `admin@zeqebellino.com`.
 - Role model with `superadmin`, `admin`, and `customer`.
 
 ### Out of scope
@@ -100,7 +100,7 @@ Technical terms may remain in README, backend tests, code comments for developer
 
 ### Admin access
 
-1. The first operational owner account is `ezequielbellino@gmail.com` with role `superadmin`.
+1. The first operational owner account is `admin@zeqebellino.com` with role `superadmin`.
 2. `superadmin` can manage the whole web and future staff/admin access.
 3. `admin` is for staff who manage the web commercially: products, sales, orders, and day-to-day store operations.
 4. `customer` is for shoppers using profile, orders, addresses, and checkout.
@@ -127,7 +127,8 @@ Supported user roles:
 
 Initial account decision:
 
-- `ezequielbellino@gmail.com` is the initial `superadmin`.
+- `admin@zeqebellino.com` is the initial `superadmin`.
+- `ezequielbellino@gmail.com` can remain a personal backup contact outside this first implementation.
 
 Add `identity_email_confirmations`:
 
@@ -171,7 +172,7 @@ Create an email port with two implementations:
 Required environment variables:
 
 - `RESEND_API_KEY`: Resend API key.
-- `EMAIL_FROM`: sender address, for example `FreeStyle <onboarding@resend.dev>` during testing or `FreeStyle <hola@yourdomain.com>` after domain verification.
+- `EMAIL_FROM`: sender address. Start with `FreeStyle <onboarding@resend.dev>`, then move to a verified `zeqebellino.com` sender after DNS is corrected.
 - `PUBLIC_APP_URL`: public frontend URL, for example `https://freestyle.up.railway.app`.
 
 ### Security behavior
@@ -265,5 +266,4 @@ git diff --check
 
 ## Open decisions before implementation
 
-- Whether to start with `onboarding@resend.dev` for testing or verify a FreeStyle domain immediately.
 - Whether `/perfil` should redirect unauthenticated users to `/login` immediately in this phase or only show login/register calls to action.
