@@ -33,6 +33,11 @@ dist/
 # VSCode
 .vscode/
 
+# Local code intelligence and brainstorming artifacts
+.codegraph/
+.superpowers/
+.cursor/rules/codegraph.mdc
+
 # Mac
 .DS_Store
 
