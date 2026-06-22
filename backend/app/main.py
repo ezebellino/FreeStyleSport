@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -9,6 +9,7 @@ from app.db.health import DatabaseReadinessProbe
 from app.db.session import session_factory
 from app.health.router import ReadinessProbe, get_readiness_probe
 from app.health.router import router as health_router
+from app.modules.identity.router import router as identity_router
 
 
 def create_app(readiness_probe: ReadinessProbe | None = None) -> FastAPI:
@@ -34,6 +35,7 @@ def create_app(readiness_probe: ReadinessProbe | None = None) -> FastAPI:
     if readiness_probe is not None:
         app.dependency_overrides[get_readiness_probe] = lambda: readiness_probe
     app.include_router(health_router)
+    app.include_router(identity_router)
     return app
 
 
