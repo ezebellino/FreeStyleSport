@@ -33,6 +33,28 @@ npm.cmd ci --prefix frontend
 npm.cmd run dev --prefix frontend
 ```
 
+## Identity and access contracts
+
+The identity foundation exposes opaque cookie sessions and role-aware helpers for later account, seller, and staff flows.
+
+### API endpoints
+
+- `POST /identity/bootstrap-admin`: creates the first administrator. This is single-use and returns `409 bootstrap_unavailable` after an admin exists.
+- `POST /identity/login`: validates email/password credentials and sets the session and CSRF cookies.
+- `GET /identity/me`: returns the current public user shape from the active session.
+- `POST /identity/logout`: revokes the active session. This unsafe request requires a matching CSRF cookie/header pair.
+
+### Browser session model
+
+- `fs_session`: opaque HttpOnly session cookie. Browser JavaScript must not read it.
+- `fs_csrf`: readable CSRF cookie used by the frontend when sending unsafe requests.
+- `x-csrf-token`: request header that must match `fs_csrf` for protected unsafe requests such as logout.
+
+### Authorization and audit
+
+- Backend authorization should use the identity dependencies to require active users and exact roles such as `admin`.
+- Sensitive actions can record audit events with request id, action, actor user id, IP address, and user agent.
+
 ## Verification
 
 ```powershell
