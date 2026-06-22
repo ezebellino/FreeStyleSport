@@ -37,6 +37,7 @@ dist/
 .codegraph/
 .superpowers/
 .cursor/rules/codegraph.mdc
+.worktrees/
 
 # Mac
 .DS_Store
