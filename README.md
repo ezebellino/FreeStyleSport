@@ -40,9 +40,31 @@ The identity foundation exposes opaque cookie sessions and role-aware helpers fo
 ### API endpoints
 
 - `POST /identity/bootstrap-admin`: creates the first administrator. This is single-use and returns `409 bootstrap_unavailable` after an admin exists.
+- `POST /identity/register`: creates a customer account and sends an email confirmation.
+- `POST /identity/confirm-email`: confirms the customer email from the link sent by email.
+- `POST /identity/resend-confirmation`: sends a fresh confirmation email when needed.
 - `POST /identity/login`: validates email/password credentials and sets the session and CSRF cookies.
 - `GET /identity/me`: returns the current public user shape from the active session.
 - `POST /identity/logout`: revokes the active session. This unsafe request requires a matching CSRF cookie/header pair.
+
+### Account roles
+
+- `superadmin`: owner account. The initial superadmin is `admin@zeqebellino.com`.
+- `admin`: store operator for products, sales, orders, and daily web management.
+- `customer`: shopper account for profile, orders, addresses, and checkout.
+
+## Email confirmation
+
+FreeStyle uses Resend for account confirmation emails. Start with the free Resend sender while the custom domain DNS is corrected.
+
+Backend Railway variables:
+
+```env
+RESEND_API_KEY=<from Resend>
+EMAIL_FROM=FreeStyle <onboarding@resend.dev>
+PUBLIC_APP_URL=https://freestyle.up.railway.app
+EMAIL_CONFIRMATION_TTL_SECONDS=86400
+```
 
 ### Browser session model
 
