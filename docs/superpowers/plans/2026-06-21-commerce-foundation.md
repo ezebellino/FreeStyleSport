@@ -1356,7 +1356,7 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e "./backend[dev]"
-      - run: .\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
+      - run: python -m ruff check --config backend/pyproject.toml backend
       - run: python -m pytest backend/tests -q
       - run: docker build -t freestyle-api:ci backend
 
