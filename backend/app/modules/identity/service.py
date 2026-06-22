@@ -10,9 +10,18 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.db.session import get_session
 from app.modules.identity.audit import record_audit_event
-from app.modules.identity.models import User, UserSession
+from app.modules.identity.confirmations import ConfirmationTokens, confirmation_link
+from app.modules.identity.email import EmailSender, build_confirmation_email
+from app.modules.identity.models import EmailConfirmation, User, UserSession
 from app.modules.identity.passwords import PasswordHasher
-from app.modules.identity.schemas import BootstrapAdminRequest, LoginRequest, PublicUser
+from app.modules.identity.schemas import (
+    BootstrapAdminRequest,
+    ConfirmEmailRequest,
+    LoginRequest,
+    PublicUser,
+    RegisterRequest,
+    ResendConfirmationRequest,
+)
 from app.modules.identity.sessions import IssuedSessionTokens, SessionTokens
 
 
@@ -34,6 +43,23 @@ class IdentityService(Protocol):
 
     async def logout(self, raw_session_token: str | None, request: Request) -> None: ...
 
+    async def register(
+        self,
+        payload: RegisterRequest,
+        request: Request,
+        settings: Settings,
+        email_sender: EmailSender,
+    ) -> None: ...
+
+    async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None: ...
+
+    async def resend_confirmation(
+        self,
+        payload: ResendConfirmationRequest,
+        settings: Settings,
+        email_sender: EmailSender,
+    ) -> None: ...
+
 
 def _public_user(user: User) -> PublicUser:
     return PublicUser(id=user.id, email=user.email, role=user.role)
@@ -44,6 +70,16 @@ def _expires_at_is_past(expires_at: datetime) -> bool:
     if expires_at.tzinfo is None:
         return expires_at <= now.replace(tzinfo=None)
     return expires_at <= now
+
+
+async def _send_confirmation_email(
+    email_sender: EmailSender,
+    settings: Settings,
+    email: str,
+    raw_token: str,
+) -> None:
+    link = confirmation_link(settings, raw_token)
+    await email_sender.send(build_confirmation_email(email, link))
 
 
 class SqlAlchemyIdentityService:
@@ -62,7 +98,9 @@ class SqlAlchemyIdentityService:
         user = User(
             email=payload.email.lower(),
             password_hash=PasswordHasher().hash(payload.password),
-            role="admin",
+            role="superadmin",
+            is_active=True,
+            email_confirmed_at=datetime.now(UTC),
         )
         self._session.add(user)
         await self._session.flush()
@@ -78,11 +116,17 @@ class SqlAlchemyIdentityService:
         settings: Settings,
     ) -> tuple[PublicUser, IssuedSessionTokens]:
         user = await self._session.scalar(select(User).where(User.email == payload.email.lower()))
-        if (
-            user is None
-            or not user.is_active
-            or not PasswordHasher().verify(payload.password, user.password_hash)
-        ):
+        if user is None or not PasswordHasher().verify(payload.password, user.password_hash):
+            raise ApiError(401, "invalid_credentials", "Email or password is incorrect")
+
+        if user.email_confirmed_at is None:
+            raise ApiError(
+                403,
+                "email_not_confirmed",
+                "Necesitamos que confirmes tu correo antes de entrar",
+            )
+
+        if not user.is_active:
             raise ApiError(401, "invalid_credentials", "Email or password is incorrect")
 
         tokens = SessionTokens.issue(timedelta(seconds=settings.session_ttl_seconds))
@@ -126,6 +170,101 @@ class SqlAlchemyIdentityService:
         user_session = await self._session_from_token(raw_session_token)
         user_session.revoked_at = datetime.now(UTC)
         await record_audit_event(self._session, request, "identity.logout", user_session.user_id)
+        await self._session.commit()
+
+    async def _expire_unused_confirmations(self, user_id: str) -> None:
+        confirmations = await self._session.scalars(
+            select(EmailConfirmation).where(
+                EmailConfirmation.user_id == user_id,
+                EmailConfirmation.used_at.is_(None),
+            )
+        )
+        now = datetime.now(UTC)
+        for confirmation in confirmations:
+            confirmation.used_at = now
+
+    async def _create_confirmation(
+        self,
+        user: User,
+        settings: Settings,
+        email_sender: EmailSender,
+    ) -> None:
+        await self._expire_unused_confirmations(user.id)
+        issued = ConfirmationTokens.issue(
+            timedelta(seconds=settings.email_confirmation_ttl_seconds)
+        )
+        self._session.add(
+            EmailConfirmation(
+                user_id=user.id,
+                token_hash=issued.token_hash,
+                expires_at=issued.expires_at,
+            )
+        )
+        await _send_confirmation_email(email_sender, settings, user.email, issued.raw_token)
+
+    async def register(
+        self,
+        payload: RegisterRequest,
+        request: Request,
+        settings: Settings,
+        email_sender: EmailSender,
+    ) -> None:
+        email = payload.email.lower()
+        existing_user = await self._session.scalar(select(User).where(User.email == email))
+        if existing_user is not None:
+            await record_audit_event(self._session, request, "identity.register_existing")
+            await self._session.commit()
+            return
+
+        user = User(
+            email=email,
+            password_hash=PasswordHasher().hash(payload.password),
+            role="customer",
+            is_active=False,
+        )
+        self._session.add(user)
+        await self._session.flush()
+        await self._create_confirmation(user, settings, email_sender)
+        await record_audit_event(self._session, request, "identity.register", user.id)
+        await self._session.commit()
+
+    async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None:
+        confirmation = await self._session.scalar(
+            select(EmailConfirmation)
+            .options(selectinload(EmailConfirmation.user))
+            .where(EmailConfirmation.token_hash == ConfirmationTokens.hash(payload.token))
+        )
+
+        if (
+            confirmation is None
+            or confirmation.used_at is not None
+            or _expires_at_is_past(confirmation.expires_at)
+        ):
+            raise ApiError(400, "invalid_confirmation", "El enlace ya no es valido")
+
+        now = datetime.now(UTC)
+        confirmation.used_at = now
+        confirmation.user.email_confirmed_at = now
+        confirmation.user.is_active = True
+        await record_audit_event(
+            self._session,
+            request,
+            "identity.confirm_email",
+            confirmation.user_id,
+        )
+        await self._session.commit()
+
+    async def resend_confirmation(
+        self,
+        payload: ResendConfirmationRequest,
+        settings: Settings,
+        email_sender: EmailSender,
+    ) -> None:
+        user = await self._session.scalar(select(User).where(User.email == payload.email.lower()))
+        if user is None or user.email_confirmed_at is not None:
+            return
+
+        await self._create_confirmation(user, settings, email_sender)
         await self._session.commit()
 
 

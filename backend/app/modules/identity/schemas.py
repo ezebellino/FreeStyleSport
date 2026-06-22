@@ -11,6 +11,23 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=12)
+
+
+class ConfirmEmailRequest(BaseModel):
+    token: str = Field(min_length=16)
+
+
+class ResendConfirmationRequest(BaseModel):
+    email: EmailStr
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
 class PublicUser(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

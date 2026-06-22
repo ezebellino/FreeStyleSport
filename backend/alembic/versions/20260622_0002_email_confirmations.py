@@ -22,6 +22,7 @@ def upgrade() -> None:
         "identity_users",
         sa.Column("email_confirmed_at", sa.DateTime(timezone=True), nullable=True),
     )
+    op.execute("UPDATE identity_users SET email_confirmed_at = CURRENT_TIMESTAMP")
     op.create_table(
         "identity_email_confirmations",
         sa.Column("id", sa.String(length=36), nullable=False),
