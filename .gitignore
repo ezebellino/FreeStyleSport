@@ -20,7 +20,7 @@ venv/
 ENV/
 
 # Alembic
-alembic.ini
+/alembic.ini
 
 # Node / React / Vite
 node_modules/
