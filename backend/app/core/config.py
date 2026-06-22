@@ -1,13 +1,16 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BACKEND_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -18,6 +21,19 @@ class Settings(BaseSettings):
     database_url: str
     cors_origins: str = "http://localhost:3000"
     log_level: str = "INFO"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        if value.startswith("postgresql+psycopg://"):
+            return value
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+psycopg://", 1)
+        raise ValueError("unsupported database URL scheme; PostgreSQL is required")
 
     @property
     def allowed_origins(self) -> list[str]:

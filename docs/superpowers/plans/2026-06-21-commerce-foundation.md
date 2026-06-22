@@ -195,26 +195,28 @@ Create `backend/tests/conftest.py`:
 ```python
 import os
 
-os.environ.setdefault(
-    "DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@localhost:5432/freestyle_test",
+os.environ["DATABASE_URL"] = (
+    "postgresql+psycopg://postgres:postgres@localhost:5432/freestyle_test"
 )
-os.environ.setdefault("ENVIRONMENT", "test")
+os.environ["ENVIRONMENT"] = "test"
 ```
 
 Create `backend/tests/core/test_config.py`:
 
 ```python
+import os
+import runpy
+from pathlib import Path
+
 import pytest
+from app.core.config import Settings
 from pydantic import ValidationError
 
-from app.core.config import Settings
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
-def test_settings_split_comma_separated_origins() -> None:
+def test_allowed_origins_splits_comma_separated_values() -> None:
     settings = Settings(
-        database_url="postgresql+psycopg://user:pass@db:5432/store",
-        environment="staging",
         cors_origins="https://shop.example.com, https://admin.example.com",
     )
 
@@ -224,13 +226,48 @@ def test_settings_split_comma_separated_origins() -> None:
     ]
 
 
-def test_production_rejects_wildcard_origin() -> None:
+def test_production_rejects_wildcard_cors_origin() -> None:
     with pytest.raises(ValidationError, match="wildcard"):
-        Settings(
-            database_url="postgresql+psycopg://user:pass@db:5432/store",
-            environment="production",
-            cors_origins="*",
-        )
+        Settings(environment="production", cors_origins="*")
+
+
+@pytest.mark.parametrize("scheme", ["postgresql://", "postgres://"])
+def test_database_url_normalizes_railway_postgres_schemes(scheme: str) -> None:
+    settings = Settings(database_url=f"{scheme}user:password@host:5432/store")
+
+    assert settings.database_url == (
+        "postgresql+psycopg://user:password@host:5432/store"
+    )
+
+
+def test_database_url_preserves_explicit_psycopg_scheme() -> None:
+    database_url = "postgresql+psycopg://user:password@host:5432/store"
+
+    assert Settings(database_url=database_url).database_url == database_url
+
+
+def test_database_url_rejects_unsupported_scheme() -> None:
+    with pytest.raises(ValidationError, match="unsupported database URL scheme"):
+        Settings(database_url="sqlite:///store.db")
+
+
+def test_settings_uses_backend_env_file_absolute_path() -> None:
+    assert Settings.model_config["env_file"] == BACKEND_DIR / ".env"
+    assert Path(Settings.model_config["env_file"]).is_absolute()
+
+
+def test_conftest_overrides_ambient_environment_with_safe_test_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://production.example/store")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+    runpy.run_path(BACKEND_DIR / "tests" / "conftest.py")
+
+    assert os.environ["DATABASE_URL"] == (
+        "postgresql+psycopg://postgres:postgres@localhost:5432/freestyle_test"
+    )
+    assert os.environ["ENVIRONMENT"] == "test"
 ```
 
 - [ ] **Step 4: Run the tests and verify the expected failure**
@@ -251,15 +288,18 @@ Create `backend/app/core/config.py`:
 
 ```python
 from functools import lru_cache
-from typing import Literal
+from pathlib import Path
+from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BACKEND_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -271,14 +311,27 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     log_level: str = "INFO"
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        if value.startswith("postgresql+psycopg://"):
+            return value
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+psycopg://", 1)
+        raise ValueError("unsupported database URL scheme; PostgreSQL is required")
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @model_validator(mode="after")
-    def reject_production_wildcard(self) -> "Settings":
+    def reject_wildcard_cors_in_production(self) -> Self:
         if self.environment == "production" and "*" in self.allowed_origins:
-            raise ValueError("production CORS origins cannot contain a wildcard")
+            raise ValueError("wildcard CORS origins are not allowed in production")
         return self
 
 
@@ -305,7 +358,7 @@ Run:
 .\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
 ```
 
-Expected: `2 passed`; Ruff exits `0`.
+Expected: `8 passed`; Ruff exits `0`.
 
 - [ ] **Step 7: Commit typed settings**
 
