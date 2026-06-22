@@ -60,9 +60,12 @@ Run:
 $root = (Resolve-Path .).Path
 $expected = "C:\ProjectsZeqe\FreestyleSport\.worktrees\commerce-foundation"
 if ($root -ne $expected) { throw "Wrong worktree: $root" }
-foreach ($path in @("frontend", "backend")) {
-  $resolved = (Resolve-Path $path).Path
-  if ((Split-Path $resolved -Parent) -ne $root) { throw "Unsafe target: $resolved" }
+foreach ($name in @("frontend", "backend")) {
+  $expectedTarget = Join-Path $root $name
+  $resolved = (Resolve-Path -LiteralPath $expectedTarget).Path
+  if ($resolved -ne $expectedTarget -or (Split-Path -Parent $resolved) -ne $root) {
+    throw "Unsafe target: $resolved"
+  }
 }
 git status --short
 git log -3 --oneline
@@ -77,9 +80,20 @@ Run:
 ```powershell
 git rm -r -f frontend backend
 git rm requirements.txt pasoapaso.txt
+
+foreach ($name in @("frontend", "backend")) {
+  $expectedTarget = Join-Path $root $name
+  if (Test-Path -LiteralPath $expectedTarget) {
+    $resolved = (Resolve-Path -LiteralPath $expectedTarget).Path
+    if ($resolved -ne $expectedTarget -or (Split-Path -Parent $resolved) -ne $root) {
+      throw "Refusing recursive removal of unsafe target: $resolved"
+    }
+    Remove-Item -LiteralPath $resolved -Recurse -Force
+  }
+}
 ```
 
-Expected: tracked prototype files appear as deletions. Ignored dependency and build artifacts below the verified service roots are removed with those roots, while root environment and database files remain untouched.
+Expected: tracked prototype files appear as staged deletions. Any ignored dependency and build artifacts left behind by `git rm` are removed only after their service root is resolved and revalidated as the exact intended target. Root environment and database files remain untouched.
 
 - [ ] **Step 3: Verify the intended deletion diff**
 
@@ -87,18 +101,23 @@ Run:
 
 ```powershell
 git status --short
-git diff --check
-git diff --name-status
+git diff --cached --name-status
+git diff --cached --check
+git diff -- docs/superpowers/plans/2026-06-21-commerce-foundation.md
 ```
 
-Expected: status lists only prototype deletions and this plan modification; the diff has no whitespace errors. The removed prototype remains recoverable from Git history.
+Expected: the cached diff lists only prototype deletions and has no whitespace errors. The final command shows this plan modification as an unstaged diff. The removed prototype remains recoverable from Git history.
 
 - [ ] **Step 4: Commit the deletion**
 
 ```powershell
 git add docs/superpowers/plans/2026-06-21-commerce-foundation.md
+git diff --cached --name-status
+git diff --cached --check
 git commit -m "chore: remove ecommerce prototype"
 ```
+
+Expected: before commit, the full cached diff contains only the prototype deletions and this plan modification, with no whitespace errors.
 
 ### Task 2: Create typed backend configuration
 
