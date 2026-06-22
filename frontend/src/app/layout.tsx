@@ -5,7 +5,7 @@ import { MotionProvider } from "@/components/motion/motion-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: { default: "Freestyle Sport", template: "%s | Freestyle Sport" },
+  title: { default: "FreeStyle", template: "%s | FreeStyle" },
   description: "Indumentaria, calzado y accesorios deportivos.",
 }
 
