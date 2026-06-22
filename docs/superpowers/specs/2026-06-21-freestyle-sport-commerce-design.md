@@ -44,6 +44,7 @@ These constraints justify a clean implementation rather than compatibility-drive
 - Third-party marketplace sellers or split payments.
 - Multiple stores, warehouses, currencies, or countries.
 - Native mobile applications.
+- Always-on 3D scenes, decorative WebGL backgrounds, or 3D as a requirement for browsing and purchasing.
 - Loyalty points, subscriptions, gift cards, or product bundles.
 - ERP integration or automatic reconciliation of bank statements.
 - Real-time carrier integrations. The initial shipping engine uses configurable postal zones, rates, free-shipping thresholds, and pickup; carriers can be added through the shipping adapter later.
@@ -53,7 +54,7 @@ These constraints justify a clean implementation rather than compatibility-drive
 
 The system is a modular monolith with two deployable applications and one managed database:
 
-1. **Storefront and operations web:** Next.js App Router with TypeScript.
+1. **Storefront and operations web:** Next.js App Router with TypeScript, Tailwind CSS, and source-owned ShadCN primitives.
 2. **Commerce API:** FastAPI, SQLAlchemy 2, Alembic, and Pydantic.
 3. **Data:** Railway PostgreSQL.
 
@@ -132,6 +133,48 @@ The visual intensity must not reduce usability. Price, availability, variant sel
 ### Icons
 
 `lucide-react` provides a consistent, tree-shakable icon set for search, profile, cart, wishlist, filters, navigation, status, copy, and operational actions. Every icon-only control has an accessible name and tooltip. Text remains visible when the action could be ambiguous.
+
+### Component primitives
+
+ShadCN supplies source-owned accessible primitives rather than a locked component package. The project initializes one coherent preset and installs only components required by an implemented flow. Semantic design tokens replace ShadCN's default appearance with the approved graphite, white, and electric-lime system.
+
+- The public store uses ShadCN selectively for controls, sheets, drawers, dialogs, fields, feedback, and accessible overlays; merchandising layouts remain custom to the brand.
+- Administrator and seller workspaces compose ShadCN forms, tables, cards, badges, sidebars, dialogs, command/search, empty states, skeletons, and toasts.
+- Components are reviewed after CLI installation because their source becomes application code.
+- Forms use explicit field groups, accessible validation, and predictable focus management.
+- Raw color utilities do not bypass semantic tokens, and product/status colors have documented light/dark contrast pairs.
+
+This follows ShadCN's open-code and composition model: [ShadCN documentation](https://ui.shadcn.com/docs).
+
+### Motion and transitions
+
+Fluid transitions are part of the design system, not one-off effects:
+
+- CSS transitions handle simple hover, focus, color, opacity, and press feedback.
+- Motion for React (`motion/react`) handles interruptible layout changes, cart drawer content, filter/result changes, modal presence, shared indicators, and deliberate route-level transitions.
+- Standard durations are 120 ms for immediate feedback, 180-240 ms for component transitions, and at most 320 ms for large view transitions.
+- Animations prefer `transform` and `opacity`; layout-triggering properties are avoided in repeated interactions.
+- Navigation, checkout, and purchase controls never wait for an animation to finish.
+- Scroll hijacking, mandatory parallax, autoplayed continuous movement, and animation-only communication are prohibited.
+- `prefers-reduced-motion` disables nonessential movement and replaces spatial transitions with short fades or immediate state changes.
+- Motion is loaded only by client components that need it, and `LazyMotion` is used when it materially reduces shipped code.
+
+Reference: [Motion for React](https://motion.dev/docs/react).
+
+### Three-dimensional content policy
+
+Three.js is not installed merely to make the store feel modern. A 3D feature proceeds only when the owners can provide or commission a useful model for a product where rotation materially improves purchase confidence.
+
+The approved extension point is an optional product-viewer experiment after the core storefront meets its performance and conversion gates:
+
+- React Three Fiber expresses the Three.js scene in React. React 19 uses the compatible React Three Fiber major version documented by the project.
+- The viewer is a client-only dynamic import activated by an explicit “Ver en 3D” control; it is never required to view images, variants, price, stock, or purchase actions.
+- A normal product image is the initial and no-WebGL fallback.
+- GLB assets are compressed and the first viewer payload, including its model, targets no more than 1.5 MB transferred.
+- Rendering pauses offscreen, device pixel ratio is capped, reduced motion disables automatic rotation, keyboard/touch controls are documented, and loading/error states remain usable.
+- The experiment ships only if representative mobile tests preserve the storefront Web Vitals targets and analytics can compare viewer usage with add-to-cart behavior.
+
+References: [React Three Fiber introduction](https://r3f.docs.pmnd.rs/getting-started/introduction) and [Three.js documentation](https://threejs.org/docs/).
 
 ### Public journey
 
@@ -338,6 +381,7 @@ Representative route groups:
 ### Frontend
 
 - Vitest and Testing Library cover accessible controls, form validation, loading/error/empty states, cart reconciliation, and responsive behavior.
+- Component tests verify reduced-motion behavior, focus after animated overlays, and that animation never delays a purchase action.
 - Playwright covers mobile and desktop journeys:
   - browse, filter, select variant, and add to cart;
   - guest checkout with shipping and pickup;
@@ -346,6 +390,7 @@ Representative route groups:
   - customer login and order claim;
   - seller and administrator permission boundaries.
 - Automated accessibility checks supplement keyboard and screen-reader-oriented manual review.
+- If the optional 3D experiment is activated, Playwright covers lazy loading, image fallback, keyboard/touch controls, WebGL failure, reduced motion, and the mobile transfer-size budget.
 
 ### Continuous checks
 
@@ -389,6 +434,8 @@ The implementation plan will split work into independently verifiable increments
 7. Administrator/seller order operations, customer account, guest tracking, and WhatsApp handoff.
 8. Analytics, accessibility, performance, security hardening, staging validation, and production launch checklist.
 
+After launch gates pass, a separately approved experiment may add one lazy-loaded 3D viewer for a flagship product. It is not on the critical path to production.
+
 Each increment must leave the application buildable and tested. Provider integrations remain behind ports so local tests do not require production credentials.
 
 ## 17. Acceptance criteria
@@ -403,4 +450,6 @@ The design is complete when the implemented system demonstrates all of the follo
 - A seller can fulfill orders and adjust stock without accessing secrets or prohibited financial functions.
 - The application deploys from Git to Railway staging using PostgreSQL and automated migrations.
 - Critical customer and staff flows pass mobile/desktop end-to-end tests and WCAG 2.2 AA checks.
+- Transitions remain fluid without delaying actions, preserve focus, and honor reduced-motion preferences.
+- ShadCN primitives use the FreestyleSport semantic tokens and do not expose an unmodified template appearance.
 - Conversion events make the completed-purchase funnel measurable without exposing personal data.
