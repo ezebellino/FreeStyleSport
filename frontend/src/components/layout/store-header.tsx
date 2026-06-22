@@ -60,10 +60,10 @@ export function StoreHeader({ cartCount = 0 }: Readonly<{ cartCount?: number }>)
 
           <Link
             href="/"
-            aria-label="Freestyle Sport"
+            aria-label="FreeStyle"
             className="font-display text-xl font-black italic tracking-tight"
           >
-            FREE/SPORT
+            FreeStyle
           </Link>
 
           <nav className="ml-6 hidden items-center gap-1 md:flex">
@@ -78,7 +78,7 @@ export function StoreHeader({ cartCount = 0 }: Readonly<{ cartCount?: number }>)
             <IconLink href="/buscar" label="Buscar">
               <SearchIcon data-icon="inline-start" />
             </IconLink>
-            <IconLink href="/cuenta" label="Perfil">
+            <IconLink href="/perfil" label="Perfil">
               <UserRoundIcon data-icon="inline-start" />
             </IconLink>
             <div className="relative">
