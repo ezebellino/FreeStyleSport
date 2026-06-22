@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.request_id import RequestIdMiddleware
+from app.db.health import DatabaseReadinessProbe
+from app.db.session import session_factory
 from app.health.router import ReadinessProbe, get_readiness_probe
 from app.health.router import router as health_router
 
@@ -35,4 +37,4 @@ def create_app(readiness_probe: ReadinessProbe | None = None) -> FastAPI:
     return app
 
 
-app = create_app()
+app = create_app(readiness_probe=DatabaseReadinessProbe(session_factory))
