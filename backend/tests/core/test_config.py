@@ -63,3 +63,15 @@ def test_conftest_overrides_ambient_environment_with_safe_test_values(
         "postgresql+psycopg://postgres:postgres@localhost:5432/freestyle_test"
     )
     assert os.environ["ENVIRONMENT"] == "test"
+
+
+def test_email_settings_have_safe_defaults() -> None:
+    settings = Settings(
+        database_url="postgresql+psycopg://user:pass@db:5432/store",
+        environment="development",
+    )
+
+    assert settings.email_from == "FreeStyle <onboarding@resend.dev>"
+    assert settings.public_app_url == "http://localhost:3000"
+    assert settings.email_confirmation_ttl_seconds == 60 * 60 * 24
+    assert settings.resend_api_key is None
