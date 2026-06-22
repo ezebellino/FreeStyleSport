@@ -302,7 +302,7 @@ Run:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest backend\tests\core\test_config.py -q
-.\.venv\Scripts\python.exe -m ruff check backend
+.\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
 ```
 
 Expected: `2 passed`; Ruff exits `0`.
@@ -504,7 +504,7 @@ Run:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest backend\tests\api\test_health.py -q
-.\.venv\Scripts\python.exe -m ruff check backend
+.\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
 ```
 
 Expected: `2 passed`; Ruff exits `0`.
@@ -745,7 +745,7 @@ Run:
 Push-Location backend
 ..\.venv\Scripts\python.exe -m alembic heads
 Pop-Location
-.\.venv\Scripts\python.exe -m ruff check backend
+.\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
 ```
 
 Expected: `1 passed`; `alembic heads` exits `0` with no revision yet; Ruff exits `0`. The identity plan will create the first schema revision.
@@ -1356,7 +1356,7 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e "./backend[dev]"
-      - run: python -m ruff check backend
+      - run: .\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
       - run: python -m pytest backend/tests -q
       - run: docker build -t freestyle-api:ci backend
 
@@ -1435,7 +1435,7 @@ npm.cmd run dev --prefix frontend
 ## Verification
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check backend
+.\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
 .\.venv\Scripts\python.exe -m pytest backend\tests -q
 npm.cmd run lint --prefix frontend
 npm.cmd run typecheck --prefix frontend
@@ -1457,7 +1457,7 @@ The approved design is in `docs/superpowers/specs/2026-06-21-freestyle-sport-com
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check backend
+.\.venv\Scripts\python.exe -m ruff check --config backend\pyproject.toml backend
 .\.venv\Scripts\python.exe -m pytest backend\tests -q
 npm.cmd run lint --prefix frontend
 npm.cmd run typecheck --prefix frontend
