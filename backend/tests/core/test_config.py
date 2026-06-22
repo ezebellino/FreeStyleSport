@@ -3,8 +3,9 @@ import runpy
 from pathlib import Path
 
 import pytest
-from app.core.config import Settings
 from pydantic import ValidationError
+
+from app.core.config import Settings
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
