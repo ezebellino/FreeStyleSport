@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     database_url: str
     cors_origins: str = "http://localhost:3000"
     log_level: str = "INFO"
+    session_cookie_name: str = "fs_session"
+    csrf_cookie_name: str = "fs_csrf"
+    cookie_domain: str | None = None
+    session_ttl_seconds: int = 60 * 60 * 24 * 7
+    csrf_header_name: str = "x-csrf-token"
 
     @field_validator("database_url", mode="before")
     @classmethod
