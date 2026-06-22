@@ -1,51 +1,42 @@
-from fastapi import FastAPI
-from .routers import users, products, orders, payments, cart, products_admin, coupons, upload
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, Base
-from .auth import router as auth_router
+from fastapi.responses import JSONResponse
+
+from app.core.config import get_settings
+from app.core.errors import ApiError
+from app.core.request_id import RequestIdMiddleware
+from app.db.health import DatabaseReadinessProbe
+from app.db.session import session_factory
+from app.health.router import ReadinessProbe, get_readiness_probe
+from app.health.router import router as health_router
+from app.modules.identity.router import router as identity_router
 
 
-app = FastAPI(
-    title="FreestyleSport API",
-    description="API para el backend del proyecto E-commerce FreestyleSport",
-    version="1.0.0",
-    contact={
-        "name": "Ezequiel Bellino",
-        "url": "https://github.com/ezebellino",
-        "email": "ezequielbellino@gmail.com",
-    },
-)
+def create_app(readiness_probe: ReadinessProbe | None = None) -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(title=settings.app_name, version="0.1.0")
+    app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"],
+    )
+
+    @app.exception_handler(ApiError)
+    async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", "unknown")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"code": exc.code, "message": exc.message, "request_id": request_id},
+        )
+
+    if readiness_probe is not None:
+        app.dependency_overrides[get_readiness_probe] = lambda: readiness_probe
+    app.include_router(health_router)
+    app.include_router(identity_router)
+    return app
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-def on_startup():
-    # Crea las tablas si no existen
-    Base.metadata.create_all(bind=engine)
-
-# Incluyes el router de auth
-app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-# subir imágenes a Cloudinary
-app.include_router(upload.router, prefix="/upload", tags=["Uploads"])
-# Incluimos los routers
-app.include_router(products.router, prefix="/products", tags=["Products"])
-app.include_router(products_admin.router, prefix="/admin/products", tags=["Admin - Products"])
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(orders.router, prefix="/orders", tags=["Orders"])
-app.include_router(cart.router, prefix="/cart", tags=["Cart"])
-# Si tuvieras un payments.router, lo incluirías igual.
-app.include_router(payments.router, prefix="/payments", tags=["Payments"])
-app.include_router(coupons.router, prefix="/coupons", tags=["Coupons"])
-
-
-@app.get("/")
-async def root():
-    return {"message": "Bienvenido a tu tienda virtual de productos deportivos!"}
+app = create_app(readiness_probe=DatabaseReadinessProbe(session_factory))

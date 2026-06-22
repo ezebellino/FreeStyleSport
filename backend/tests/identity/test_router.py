@@ -1,0 +1,166 @@
+from dataclasses import dataclass
+from datetime import timedelta
+from uuid import uuid4
+
+from fastapi import Request
+from fastapi.testclient import TestClient
+
+from app.core.config import Settings
+from app.main import create_app
+from app.modules.identity.router import get_identity_service
+from app.modules.identity.schemas import BootstrapAdminRequest, LoginRequest, PublicUser
+from app.modules.identity.sessions import IssuedSessionTokens, SessionTokens
+
+
+class HealthyProbe:
+    async def check(self) -> None:
+        return None
+
+
+@dataclass
+class StoredSession:
+    user: PublicUser
+    csrf_token: str
+    revoked: bool = False
+
+
+class FakeIdentityService:
+    def __init__(self) -> None:
+        self.users: dict[str, tuple[PublicUser, str]] = {}
+        self.sessions: dict[str, StoredSession] = {}
+
+    async def bootstrap_admin(
+        self,
+        payload: BootstrapAdminRequest,
+        request: Request,
+    ) -> PublicUser:
+        if self.users:
+            from app.core.errors import ApiError
+
+            raise ApiError(409, "bootstrap_unavailable", "The first administrator already exists")
+        user = PublicUser(id=str(uuid4()), email=payload.email, role="admin")
+        self.users[payload.email.lower()] = (user, payload.password)
+        return user
+
+    async def login(
+        self,
+        payload: LoginRequest,
+        request: Request,
+        settings: Settings,
+    ) -> tuple[PublicUser, IssuedSessionTokens]:
+        from app.core.errors import ApiError
+
+        stored = self.users.get(payload.email.lower())
+        if stored is None or stored[1] != payload.password:
+            raise ApiError(401, "invalid_credentials", "Email or password is incorrect")
+
+        user = stored[0]
+        tokens = SessionTokens.issue(timedelta(seconds=settings.session_ttl_seconds))
+        self.sessions[tokens.raw_session_token] = StoredSession(user, tokens.csrf_token)
+        return user, tokens
+
+    async def current_user(self, raw_session_token: str | None) -> PublicUser:
+        from app.core.errors import ApiError
+
+        if raw_session_token is None:
+            raise ApiError(401, "not_authenticated", "Authentication is required")
+        stored = self.sessions.get(raw_session_token)
+        if stored is None or stored.revoked:
+            raise ApiError(401, "not_authenticated", "Authentication is required")
+        return stored.user
+
+    async def logout(self, raw_session_token: str | None, request: Request) -> None:
+        from app.core.errors import ApiError
+
+        if raw_session_token is None or raw_session_token not in self.sessions:
+            raise ApiError(401, "not_authenticated", "Authentication is required")
+        self.sessions[raw_session_token].revoked = True
+
+
+def build_client() -> TestClient:
+    service = FakeIdentityService()
+    app = create_app(readiness_probe=HealthyProbe())
+    app.dependency_overrides[get_identity_service] = lambda: service
+    return TestClient(app)
+
+
+def test_bootstrap_admin_creates_first_admin() -> None:
+    client = build_client()
+
+    response = client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["email"] == "owner@example.com"
+    assert response.json()["role"] == "admin"
+
+
+def test_bootstrap_admin_is_single_use() -> None:
+    client = build_client()
+    client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    response = client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "second@example.com", "password": "correct horse battery"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "bootstrap_unavailable"
+
+
+def test_login_sets_session_and_csrf_cookies() -> None:
+    client = build_client()
+    client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    response = client.post(
+        "/identity/login",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "admin"
+    assert client.cookies.get("fs_session") is not None
+    assert client.cookies.get("fs_csrf") is not None
+    assert "HttpOnly" in response.headers["set-cookie"]
+
+
+def test_me_returns_current_user_after_login() -> None:
+    client = build_client()
+    client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+    client.post(
+        "/identity/login",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    response = client.get("/identity/me")
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "owner@example.com"
+
+
+def test_logout_requires_matching_csrf_header() -> None:
+    client = build_client()
+    client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+    client.post(
+        "/identity/login",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    response = client.post("/identity/logout", headers={"x-csrf-token": "wrong"})
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "csrf_failed"
