@@ -26,7 +26,8 @@ Resend is the preferred email provider for this phase because its official prici
 - Development/test fallback that records the confirmation link without sending real mail.
 - Railway environment variable documentation.
 - Public UI copy cleanup to remove implementation terms.
-- Initial owner/admin account can use the project owner's real email through the existing admin bootstrap flow or an admin creation script if needed later.
+- Initial superadmin account uses `ezequielbellino@gmail.com`.
+- Role model with `superadmin`, `admin`, and `customer`.
 
 ### Out of scope
 
@@ -37,6 +38,7 @@ Resend is the preferred email provider for this phase because its official prici
 - Editable customer profile fields.
 - OAuth/social login.
 - Email delivery webhooks.
+- Full seller/admin dashboard implementation beyond the role foundation and account access rules.
 
 ## Product language
 
@@ -96,6 +98,13 @@ Technical terms may remain in README, backend tests, code comments for developer
 4. Backend rejects unconfirmed accounts with a clear message.
 5. Confirmed shoppers receive the existing secure browser session.
 
+### Admin access
+
+1. The first operational owner account is `ezequielbellino@gmail.com` with role `superadmin`.
+2. `superadmin` can manage the whole web and future staff/admin access.
+3. `admin` is for staff who manage the web commercially: products, sales, orders, and day-to-day store operations.
+4. `customer` is for shoppers using profile, orders, addresses, and checkout.
+
 ### Profile
 
 1. Shopper opens `/perfil`.
@@ -109,6 +118,16 @@ Technical terms may remain in README, backend tests, code comments for developer
 Extend `identity_users`:
 
 - `email_confirmed_at: datetime | None`
+
+Supported user roles:
+
+- `superadmin`: owner-level account. Can manage the platform, staff/admin users, and future high-risk settings.
+- `admin`: operational account for people who manage the web and sell through the store.
+- `customer`: shopper account.
+
+Initial account decision:
+
+- `ezequielbellino@gmail.com` is the initial `superadmin`.
 
 Add `identity_email_confirmations`:
 
@@ -246,6 +265,5 @@ git diff --check
 
 ## Open decisions before implementation
 
-- Which real email should be used as the initial owner/admin account.
 - Whether to start with `onboarding@resend.dev` for testing or verify a FreeStyle domain immediately.
 - Whether `/perfil` should redirect unauthenticated users to `/login` immediately in this phase or only show login/register calls to action.
