@@ -6,22 +6,22 @@ import { Button } from "@/components/ui/button"
 const profileSections = [
   {
     title: "Datos personales",
-    description: "Nombre, email y teléfono de contacto para compras y soporte.",
+    description: "Nombre, email y telefono de contacto para compras y soporte.",
     status: "Listo para conectar",
   },
   {
     title: "Pedidos",
-    description: "Historial de compras, estados de preparación y seguimiento.",
-    status: "Próximo módulo",
+    description: "Historial de compras, preparacion y seguimiento.",
+    status: "Proximamente",
   },
   {
     title: "Direcciones",
-    description: "Direcciones frecuentes para acelerar el checkout.",
-    status: "Próximo módulo",
+    description: "Direcciones frecuentes para acelerar tus compras.",
+    status: "Proximamente",
   },
   {
     title: "Seguridad",
-    description: "Sesión protegida con cookie HttpOnly y acciones sensibles con CSRF.",
+    description: "Cuenta protegida y seguridad adicional para acciones importantes.",
     status: "Base activa",
   },
 ] as const
@@ -36,29 +36,28 @@ export default function ProfilePage() {
             Tu espacio FreeStyle
           </h1>
           <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Este es el centro de cuenta para compradores: datos personales, pedidos, direcciones y
-            seguridad. La base de identidad ya está disponible para conectar estos flujos sin exponer
-            credenciales al navegador.
+            Este es tu centro de cuenta: datos personales, pedidos, direcciones y seguridad. Desde
+            aca vas a poder entrar, crear cuenta y seguir tus compras.
           </p>
         </div>
 
         <div className="rounded-3xl border bg-card p-6 text-card-foreground shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground">Estado de sesión</p>
+          <p className="text-sm font-medium text-muted-foreground">Cuenta de cliente</p>
           <div className="mt-4 flex items-center justify-between gap-4">
             <div>
-              <p className="text-xl font-semibold">Acceso de cliente</p>
+              <p className="text-xl font-semibold">Acceso personal</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Preparado para login, logout y usuario actual.
+                Entra o crea tu cuenta para guardar tus datos y preparar tus pedidos.
               </p>
             </div>
-            <Badge>Activo</Badge>
+            <Badge>Seguro</Badge>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             <Button asChild>
-              <Link href="/productos">Comprar ahora</Link>
+              <Link href="/login">Iniciar sesion</Link>
             </Button>
             <Button asChild variant="secondary">
-              <Link href="/admin">Panel admin</Link>
+              <Link href="/registro">Crear cuenta</Link>
             </Button>
           </div>
         </div>
