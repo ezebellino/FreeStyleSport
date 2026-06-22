@@ -4,7 +4,7 @@
 
 **Goal:** Replace the prototype foundation with a tested Next.js/FastAPI/PostgreSQL skeleton that is branded, mobile-first, and deployable as separate Railway services.
 
-**Architecture:** Preserve the current prototype under `legacy/`, then create clean `frontend/` and `backend/` service roots. The backend starts as a modular FastAPI application with typed settings, problem responses, request IDs, database readiness, and Alembic; the frontend starts as a Next.js App Router application with ShadCN primitives, semantic urban-brand tokens, Lucide icons, and Motion configured for reduced motion.
+**Architecture:** Delete the prototype from the active tree, relying on Git history when the old implementation must be inspected, then create clean `frontend/` and `backend/` service roots. The backend starts as a modular FastAPI application with typed settings, problem responses, request IDs, database readiness, and Alembic; the frontend starts as a Next.js App Router application with ShadCN primitives, semantic urban-brand tokens, Lucide icons, and Motion configured for reduced motion.
 
 **Tech Stack:** Python 3.13, FastAPI, Pydantic Settings, SQLAlchemy 2, Psycopg 3, Alembic, pytest, Ruff, Next.js App Router, React 19, TypeScript, Tailwind CSS, ShadCN/Radix, Lucide, Motion, Vitest, Testing Library, Docker, GitHub Actions, Railway PostgreSQL.
 
@@ -17,9 +17,6 @@ This is plan 1 of the approved delivery sequence. It implements repository, depl
 Target files:
 
 ```text
-legacy/
-  frontend-vite/                 # untouched prototype reference
-  backend-fastapi/               # untouched prototype reference
 backend/
   app/core/config.py             # typed environment settings
   app/core/errors.py             # stable API problem responses
@@ -45,55 +42,62 @@ frontend/
 README.md
 ```
 
-### Task 1: Archive the prototype without losing history
+The prototype is deleted from the active tree before these service roots are rebuilt. Its complete source remains available through Git history.
+
+### Task 1: Remove the prototype before the clean rebuild
 
 **Files:**
-- Move: `frontend/` -> `legacy/frontend-vite/`
-- Move: `backend/` -> `legacy/backend-fastapi/`
-- Move: `requirements.txt` -> `legacy/requirements-prototype.txt`
-- Move: `pasoapaso.txt` -> `legacy/pasoapaso-prototype.txt`
+- Delete: `frontend/`
+- Delete: `backend/`
+- Delete: `requirements.txt`
+- Delete: `pasoapaso.txt`
 
-- [ ] **Step 1: Verify the starting point is clean**
+- [ ] **Step 1: Verify the worktree and deletion targets**
+
+Run:
+
+```powershell
+$root = (Resolve-Path .).Path
+$expected = "C:\ProjectsZeqe\FreestyleSport\.worktrees\commerce-foundation"
+if ($root -ne $expected) { throw "Wrong worktree: $root" }
+foreach ($path in @("frontend", "backend")) {
+  $resolved = (Resolve-Path $path).Path
+  if ((Split-Path $resolved -Parent) -ne $root) { throw "Unsafe target: $resolved" }
+}
+git status --short
+git log -3 --oneline
+```
+
+Expected: every resolved directory is an immediate child of the intended worktree. Status may show only controller-created baseline artifacts under `frontend/`; the latest commits include the approved design and plan.
+
+- [ ] **Step 2: Delete the prototype with Git-aware operations**
+
+Run:
+
+```powershell
+git rm -r -f frontend backend
+git rm requirements.txt pasoapaso.txt
+```
+
+Expected: tracked prototype files appear as deletions. Ignored dependency and build artifacts below the verified service roots are removed with those roots, while root environment and database files remain untouched.
+
+- [ ] **Step 3: Verify the intended deletion diff**
 
 Run:
 
 ```powershell
 git status --short
-git log -3 --oneline
+git diff --check
+git diff --name-status
 ```
 
-Expected: `git status --short` prints nothing; the latest commits include the approved design and plan.
+Expected: status lists only prototype deletions and this plan modification; the diff has no whitespace errors. The removed prototype remains recoverable from Git history.
 
-- [ ] **Step 2: Move the prototype with Git-aware operations**
-
-Run:
+- [ ] **Step 4: Commit the deletion**
 
 ```powershell
-New-Item -ItemType Directory -Force legacy
-git mv frontend legacy/frontend-vite
-git mv backend legacy/backend-fastapi
-git mv requirements.txt legacy/requirements-prototype.txt
-git mv pasoapaso.txt legacy/pasoapaso-prototype.txt
-```
-
-Expected: the four paths appear as renames in `git status --short`; no prototype file is deleted.
-
-- [ ] **Step 3: Verify the archived entry points remain readable**
-
-Run:
-
-```powershell
-Get-Content legacy\frontend-vite\package.json | Select-Object -First 5
-Get-Content legacy\backend-fastapi\app\main.py | Select-Object -First 5
-```
-
-Expected: both commands print the original prototype files.
-
-- [ ] **Step 4: Commit the archive**
-
-```powershell
-git add legacy
-git commit -m "chore: archive ecommerce prototype"
+git add docs/superpowers/plans/2026-06-21-commerce-foundation.md
+git commit -m "chore: remove ecommerce prototype"
 ```
 
 ### Task 2: Create typed backend configuration
@@ -1381,7 +1385,8 @@ Mobile-first commerce for sports apparel, footwear, and accessories.
 
 - `frontend/`: Next.js public store and staff interface.
 - `backend/`: FastAPI commerce API.
-- `legacy/`: read-only prototype retained until feature parity.
+
+The previous prototype remains available through Git history before this clean rebuild.
 
 ## Local prerequisites
 
