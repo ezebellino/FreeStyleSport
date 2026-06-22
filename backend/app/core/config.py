@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     cookie_domain: str | None = None
     session_ttl_seconds: int = 60 * 60 * 24 * 7
     csrf_header_name: str = "x-csrf-token"
+    resend_api_key: str | None = None
+    email_from: str = "FreeStyle <onboarding@resend.dev>"
+    public_app_url: str = "http://localhost:3000"
+    email_confirmation_ttl_seconds: int = 60 * 60 * 24
 
     @field_validator("database_url", mode="before")
     @classmethod

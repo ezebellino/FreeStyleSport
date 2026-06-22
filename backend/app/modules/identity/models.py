@@ -19,6 +19,10 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(String(32), default="customer")
     is_active: Mapped[bool] = mapped_column(default=True)
+    email_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -27,6 +31,10 @@ class User(Base):
     )
 
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user")
+    email_confirmations: Mapped[list["EmailConfirmation"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class UserSession(Base):
@@ -44,6 +52,22 @@ class UserSession(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class EmailConfirmation(Base):
+    __tablename__ = "identity_email_confirmations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("identity_users.id", ondelete="CASCADE"),
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="email_confirmations")
 
 
 class AuditEvent(Base):

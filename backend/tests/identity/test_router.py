@@ -7,8 +7,16 @@ from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import create_app
+from app.modules.identity.email import EmailSender
 from app.modules.identity.router import get_identity_service
-from app.modules.identity.schemas import BootstrapAdminRequest, LoginRequest, PublicUser
+from app.modules.identity.schemas import (
+    BootstrapAdminRequest,
+    ConfirmEmailRequest,
+    LoginRequest,
+    PublicUser,
+    RegisterRequest,
+    ResendConfirmationRequest,
+)
 from app.modules.identity.sessions import IssuedSessionTokens, SessionTokens
 
 
@@ -38,9 +46,30 @@ class FakeIdentityService:
             from app.core.errors import ApiError
 
             raise ApiError(409, "bootstrap_unavailable", "The first administrator already exists")
-        user = PublicUser(id=str(uuid4()), email=payload.email, role="admin")
+        user = PublicUser(id=str(uuid4()), email=payload.email, role="superadmin")
         self.users[payload.email.lower()] = (user, payload.password)
         return user
+
+    async def register(
+        self,
+        payload: RegisterRequest,
+        request: Request,
+        settings: Settings,
+        email_sender: EmailSender,
+    ) -> None:
+        user = PublicUser(id=str(uuid4()), email=payload.email, role="customer")
+        self.users[payload.email.lower()] = (user, payload.password)
+
+    async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None:
+        return None
+
+    async def resend_confirmation(
+        self,
+        payload: ResendConfirmationRequest,
+        settings: Settings,
+        email_sender: EmailSender,
+    ) -> None:
+        return None
 
     async def login(
         self,
@@ -94,7 +123,7 @@ def test_bootstrap_admin_creates_first_admin() -> None:
 
     assert response.status_code == 201
     assert response.json()["email"] == "owner@example.com"
-    assert response.json()["role"] == "admin"
+    assert response.json()["role"] == "superadmin"
 
 
 def test_bootstrap_admin_is_single_use() -> None:
@@ -126,7 +155,7 @@ def test_login_sets_session_and_csrf_cookies() -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["role"] == "admin"
+    assert response.json()["role"] == "superadmin"
     assert client.cookies.get("fs_session") is not None
     assert client.cookies.get("fs_csrf") is not None
     assert "HttpOnly" in response.headers["set-cookie"]
@@ -164,3 +193,35 @@ def test_logout_requires_matching_csrf_header() -> None:
 
     assert response.status_code == 403
     assert response.json()["code"] == "csrf_failed"
+
+
+def test_register_returns_plain_confirmation_message() -> None:
+    client = build_client()
+
+    response = client.post(
+        "/identity/register",
+        json={"email": "buyer@example.com", "password": "correct horse battery"},
+    )
+
+    assert response.status_code == 201
+    assert response.json() == {"message": "Te enviamos un correo para confirmar tu cuenta."}
+
+
+def test_confirm_email_returns_plain_success_message() -> None:
+    client = build_client()
+
+    response = client.post("/identity/confirm-email", json={"token": "valid-token-value"})
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Tu cuenta ya esta confirmada."}
+
+
+def test_resend_confirmation_returns_generic_message() -> None:
+    client = build_client()
+
+    response = client.post("/identity/resend-confirmation", json={"email": "buyer@example.com"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "message": "Si la cuenta existe, te enviamos un nuevo correo de confirmacion."
+    }
