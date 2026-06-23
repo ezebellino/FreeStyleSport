@@ -1,9 +1,11 @@
 ﻿"use client"
 
 import { MenuIcon, SearchIcon, ShoppingBagIcon, UserRoundIcon } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
+import { useCart } from "@/components/cart/cart-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -37,8 +39,9 @@ function IconLink({
   )
 }
 
-export function StoreHeader({ cartCount = 0 }: Readonly<{ cartCount?: number }>) {
+export function StoreHeader() {
   const [user, setUser] = useState<PublicUser | null>(null)
+  const { count: cartCount } = useCart()
 
   useEffect(() => {
     let isMounted = true
@@ -87,12 +90,15 @@ export function StoreHeader({ cartCount = 0 }: Readonly<{ cartCount?: number }>)
             </SheetContent>
           </Sheet>
 
-          <Link
-            href="/"
-            aria-label="FreeStyle"
-            className="font-display text-xl font-black italic tracking-tight"
-          >
-            FreeStyle
+          <Link href="/" aria-label="FreeStyle" className="flex items-center gap-2">
+            <Image
+              src="/brand/freestyle-logo.png"
+              alt=""
+              width={36}
+              height={36}
+              className="rounded-full bg-white object-contain"
+            />
+            <span className="font-display text-xl font-black italic tracking-tight">FreeStyle</span>
           </Link>
 
           <nav className="ml-6 hidden items-center gap-1 md:flex">

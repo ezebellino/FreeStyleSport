@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { AddToCartButton } from "@/components/cart/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getProductAudienceLabel, getProductCategoryLabel, type Product } from "@/lib/products"
@@ -75,9 +76,7 @@ export function ProductCard({ product }: Readonly<{ product: Product }>) {
           <Button asChild className="flex-1">
             <Link href={`/productos/${product.slug}`}>Ver producto</Link>
           </Button>
-          <Button asChild variant="secondary">
-            <Link href={`/carrito?producto=${product.slug}`}>Agregar</Link>
-          </Button>
+          <AddToCartButton product={product} variant="secondary" />
         </div>
       </div>
     </article>

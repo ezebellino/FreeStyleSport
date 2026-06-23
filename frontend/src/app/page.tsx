@@ -1,4 +1,5 @@
-﻿import Link from "next/link"
+import Image from "next/image"
+import Link from "next/link"
 
 import { Reveal } from "@/components/motion/reveal"
 import { Button } from "@/components/ui/button"
@@ -21,10 +22,16 @@ export default function HomePage() {
         </Button>
       </Reveal>
       <Reveal delay={0.08} className="min-h-72">
-        <div
-          aria-label="Vista previa de campaña"
-          className="size-full min-h-72 rounded-2xl bg-gradient-to-br from-secondary to-background ring-1 ring-border"
-        />
+        <div className="grid size-full min-h-72 place-items-center rounded-2xl bg-white p-8 ring-1 ring-border">
+          <Image
+            src="/brand/freestyle-logo.png"
+            alt="FreeStyle Ropa Deportiva"
+            width={250}
+            height={250}
+            className="max-h-56 object-contain"
+            priority
+          />
+        </div>
       </Reveal>
     </section>
   )

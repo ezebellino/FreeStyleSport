@@ -1,7 +1,6 @@
 ﻿import type { Metadata } from "next"
 
-import { StoreHeader } from "@/components/layout/store-header"
-import { MotionProvider } from "@/components/motion/motion-provider"
+import { StoreShell } from "@/components/layout/store-shell"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -13,10 +12,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="es">
       <body>
-        <MotionProvider>
-          <StoreHeader />
-          <main>{children}</main>
-        </MotionProvider>
+        <StoreShell>{children}</StoreShell>
       </body>
     </html>
   )
