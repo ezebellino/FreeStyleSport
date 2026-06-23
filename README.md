@@ -77,6 +77,26 @@ EMAIL_CONFIRMATION_TTL_SECONDS=86400
 - Backend authorization should use the identity dependencies to require active users and exact roles such as `admin`.
 - Sensitive actions can record audit events with request id, action, actor user id, IP address, and user agent.
 
+## Commerce catalog
+
+The catalog is generic by design: the current tenant is FreeStyle, but product records include
+tenant ownership so the same ecommerce skeleton can later support other stores or rubros.
+
+### API endpoints
+
+- `GET /commerce/products`: public published products, with optional `category` filter.
+- `GET /commerce/products/{slug}`: public product detail.
+- `GET /commerce/admin/products`: staff catalog view for `admin` and `superadmin`.
+- `POST /commerce/admin/products`: create products with price, category, images, variants, stock, and flexible attributes.
+- `PUT /commerce/admin/products/{product_id}`: update product content, images, variants, and publication status.
+
+### Product image strategy
+
+Product images are stored as public URLs plus provider metadata. This keeps the database portable:
+Cloudinary, S3/R2, Supabase Storage, or any other image CDN can be used without changing the
+catalog tables. Cloudinary can be used on its free plan for the first storefront iteration; the
+admin form already accepts Cloudinary URLs such as `https://res.cloudinary.com/...`.
+
 ## Verification
 
 ```powershell

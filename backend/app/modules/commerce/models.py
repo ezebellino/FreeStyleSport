@@ -1,0 +1,157 @@
+from datetime import UTC, datetime
+from decimal import Decimal
+from uuid import uuid4
+
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+class Tenant(Base):
+    __tablename__ = "commerce_tenants"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    name: Mapped[str] = mapped_column(String(160))
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    categories: Mapped[list["Category"]] = relationship(back_populates="tenant")
+    products: Mapped[list["Product"]] = relationship(back_populates="tenant")
+
+
+class Category(Base):
+    __tablename__ = "commerce_categories"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "slug", name="uq_commerce_categories_tenant_slug"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(160))
+    slug: Mapped[str] = mapped_column(String(120), index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    tenant: Mapped[Tenant] = relationship(back_populates="categories")
+    products: Mapped[list["Product"]] = relationship(back_populates="category")
+
+
+class Product(Base):
+    __tablename__ = "commerce_products"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "slug", name="uq_commerce_products_tenant_slug"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    category_id: Mapped[str | None] = mapped_column(
+        ForeignKey("commerce_categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    slug: Mapped[str] = mapped_column(String(160), index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brand: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
+    base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    compare_at_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), default="ARS")
+    attributes: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    tenant: Mapped[Tenant] = relationship(back_populates="products")
+    category: Mapped[Category | None] = relationship(back_populates="products")
+    images: Mapped[list["ProductImage"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="ProductImage.sort_order",
+    )
+    variants: Mapped[list["ProductVariant"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="ProductVariant.sort_order",
+    )
+
+
+class ProductImage(Base):
+    __tablename__ = "commerce_product_images"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    product_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_products.id", ondelete="CASCADE"),
+        index=True,
+    )
+    url: Mapped[str] = mapped_column(Text)
+    alt_text: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    provider_public_id: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    product: Mapped[Product] = relationship(back_populates="images")
+
+
+class ProductVariant(Base):
+    __tablename__ = "commerce_product_variants"
+    __table_args__ = (
+        UniqueConstraint("product_id", "sku", name="uq_commerce_variants_product_sku"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    product_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_products.id", ondelete="CASCADE"),
+        index=True,
+    )
+    sku: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    label: Mapped[str] = mapped_column(String(160))
+    price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    attributes: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    product: Mapped[Product] = relationship(back_populates="variants")
