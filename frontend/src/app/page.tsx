@@ -34,7 +34,7 @@ export default function HomePage() {
           <Reveal className="relative z-10 flex flex-col items-start gap-6">
             <div className="flex items-center gap-3">
               <Image
-                src="/brand/freestyle-logo.png"
+                src="/FreeStyleLogo.png"
                 alt=""
                 width={48}
                 height={48}
