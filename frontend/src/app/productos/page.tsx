@@ -7,13 +7,13 @@ import { demoProducts, fetchProducts } from "@/lib/products"
 
 export default async function ProductsPage({
   searchParams,
-}: Readonly<{ searchParams: Promise<{ categoria?: string }> }>) {
-  const { categoria } = await searchParams
+}: Readonly<{ searchParams: Promise<{ categoria?: string; linea?: string }> }>) {
+  const { categoria, linea } = await searchParams
   let products = demoProducts
   let isDemo = true
 
   try {
-    const apiProducts = await fetchProducts(categoria)
+    const apiProducts = await fetchProducts({ category: categoria, audience: linea })
     if (apiProducts.length > 0) {
       products = apiProducts
       isDemo = false
@@ -22,11 +22,15 @@ export default async function ProductsPage({
     products = demoProducts
   }
 
+  const activeFilter = [linea, categoria].filter(Boolean).join(" / ")
+
   return (
     <section className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 md:px-8 md:py-16">
       <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
         <div className="space-y-3">
-          <Badge className="w-fit">{categoria ? categoria.replace("-", " ") : "Productos"}</Badge>
+          <Badge className="w-fit">
+            {activeFilter ? activeFilter.replace("-", " ") : "Productos"}
+          </Badge>
           <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
             Catalogo FreeStyle
           </h1>

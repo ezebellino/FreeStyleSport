@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { createAdminProduct } from "@/lib/products"
+import { createAdminProduct, productAudiences, productCategories } from "@/lib/products"
 
 function slugify(value: string) {
   return value
@@ -28,6 +28,7 @@ export function ProductAdminForm() {
     const form = new FormData(event.currentTarget)
     const name = String(form.get("name") ?? "")
     const category = String(form.get("category") ?? "")
+    const audience = String(form.get("audience") ?? "unisex")
     const imageUrl = String(form.get("imageUrl") ?? "")
     const price = Number(form.get("price") ?? 0)
     const stock = Number(form.get("stock") ?? 0)
@@ -43,7 +44,7 @@ export function ProductAdminForm() {
         status: "published",
         base_price: price,
         currency: "ARS",
-        attributes: { rubro: "generico" },
+        attributes: { linea: audience, rubro: "generico" },
         images: imageUrl
           ? [{ url: imageUrl, alt_text: name, provider: imageUrl.includes("cloudinary") ? "cloudinary" : "url" }]
           : [],
@@ -66,12 +67,23 @@ export function ProductAdminForm() {
       </label>
       <label className="space-y-2">
         <span className="text-sm font-medium">Categoria</span>
-        <input
-          className="h-11 w-full rounded-lg border bg-background px-3 text-sm"
-          name="category"
-          placeholder="hombre, calzado, bebes"
-          required
-        />
+        <select className="h-11 w-full rounded-lg border bg-background px-3 text-sm" name="category" required>
+          {productCategories.map((category) => (
+            <option key={category.value} value={category.value}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="space-y-2">
+        <span className="text-sm font-medium">Linea</span>
+        <select className="h-11 w-full rounded-lg border bg-background px-3 text-sm" name="audience" required>
+          {productAudiences.map((audience) => (
+            <option key={audience.value} value={audience.value}>
+              {audience.label}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="space-y-2">
         <span className="text-sm font-medium">Precio</span>

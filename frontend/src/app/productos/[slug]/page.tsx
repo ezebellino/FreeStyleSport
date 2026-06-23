@@ -5,7 +5,12 @@ import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { publicApiUrl } from "@/lib/api"
-import { demoProducts, Product } from "@/lib/products"
+import {
+  demoProducts,
+  getProductAudienceLabel,
+  getProductCategoryLabel,
+  Product,
+} from "@/lib/products"
 
 const formatter = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -35,6 +40,8 @@ export default async function ProductDetailPage({
   }
 
   const image = product.images[0]
+  const categoryLabel = getProductCategoryLabel(product)
+  const audienceLabel = getProductAudienceLabel(product)
 
   return (
     <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-2 md:px-8 md:py-16">
@@ -49,7 +56,14 @@ export default async function ProductDetailPage({
       </div>
       <div className="flex flex-col justify-center gap-5">
         <div className="space-y-3">
-          {product.category ? <Badge className="w-fit">{product.category.name}</Badge> : null}
+          <div className="flex flex-wrap gap-2">
+            {audienceLabel ? <Badge className="w-fit">{audienceLabel}</Badge> : null}
+            {categoryLabel ? (
+              <Badge className="w-fit" variant="outline">
+                {categoryLabel}
+              </Badge>
+            ) : null}
+          </div>
           <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
             {product.name}
           </h1>
