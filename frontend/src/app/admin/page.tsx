@@ -1,11 +1,12 @@
 import Link from "next/link"
 
+import { ProductAdminForm } from "@/components/products/product-admin-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 export default function AdminPage() {
   return (
-    <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl flex-col justify-center gap-8 px-4 py-16 md:px-8">
+    <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col gap-8 px-4 py-10 md:px-8 md:py-16">
       <div className="space-y-4">
         <Badge>Gestion FreeStyle</Badge>
         <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
@@ -31,6 +32,17 @@ export default function AdminPage() {
             falta.
           </p>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-black">Cargar producto</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            El rol admin puede cargar nombre, precio, imagen, descripcion, categoria y stock.
+            La imagen puede ser una URL de Cloudinary u otro enlace publico.
+          </p>
+        </div>
+        <ProductAdminForm />
       </div>
 
       <Button asChild variant="secondary" className="w-fit">
