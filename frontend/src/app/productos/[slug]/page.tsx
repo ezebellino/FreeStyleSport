@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { publicApiUrl } from "@/lib/api"
@@ -39,8 +40,7 @@ export default async function ProductDetailPage({
     <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-2 md:px-8 md:py-16">
       <div className="aspect-[4/5] overflow-hidden rounded-3xl border bg-secondary">
         {image ? (
-          // eslint-disable-next-line @next/next/no-img-element -- product image URLs can come from Cloudinary or another CDN during catalog setup.
-          <img alt={image.alt_text ?? product.name} className="size-full object-cover" src={image.url} />
+          <ProductImage alt={image.alt_text ?? product.name} className="size-full object-cover" src={image.url} />
         ) : (
           <div className="flex size-full items-center justify-center font-display text-4xl font-black italic text-muted-foreground">
             FreeStyle

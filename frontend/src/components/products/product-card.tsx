@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { Product } from "@/lib/products"
 
+import { ProductImage } from "./product-image"
+
 const formatter = new Intl.NumberFormat("es-AR", {
   style: "currency",
   currency: "ARS",
@@ -24,11 +26,9 @@ export function ProductCard({ product }: Readonly<{ product: Product }>) {
     <article className="group overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
       <div className="relative aspect-[4/5] overflow-hidden bg-secondary">
         {mainImage ? (
-          // eslint-disable-next-line @next/next/no-img-element -- product image URLs can come from Cloudinary or another CDN during catalog setup.
-          <img
+          <ProductImage
             alt={mainImage.alt_text ?? product.name}
             className="size-full object-cover transition duration-500 group-hover:scale-105"
-            loading="lazy"
             src={mainImage.url}
           />
         ) : (

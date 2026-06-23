@@ -2,11 +2,13 @@
 
 import { MenuIcon, SearchIcon, ShoppingBagIcon, UserRoundIcon } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { getCurrentUser, type PublicUser } from "@/lib/auth"
 
 const navItems = [
   ["Hombre", "/productos?categoria=hombre"],
@@ -36,6 +38,33 @@ function IconLink({
 }
 
 export function StoreHeader({ cartCount = 0 }: Readonly<{ cartCount?: number }>) {
+  const [user, setUser] = useState<PublicUser | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadUser() {
+      try {
+        const currentUser = await getCurrentUser()
+        if (isMounted) {
+          setUser(currentUser)
+        }
+      } catch {
+        if (isMounted) {
+          setUser(null)
+        }
+      }
+    }
+
+    void loadUser()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const isStaff = user?.role === "admin" || user?.role === "superadmin"
+
   return (
     <TooltipProvider>
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
@@ -75,12 +104,24 @@ export function StoreHeader({ cartCount = 0 }: Readonly<{ cartCount?: number }>)
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
+            {isStaff ? (
+              <Button className="hidden sm:inline-flex" variant="secondary" asChild>
+                <Link href="/admin">Panel</Link>
+              </Button>
+            ) : null}
             <IconLink href="/buscar" label="Buscar">
               <SearchIcon data-icon="inline-start" />
             </IconLink>
-            <IconLink href="/perfil" label="Perfil">
-              <UserRoundIcon data-icon="inline-start" />
-            </IconLink>
+            <div className="relative">
+              <IconLink href="/perfil" label={user ? `Perfil, ${user.email}` : "Perfil"}>
+                <UserRoundIcon data-icon="inline-start" />
+              </IconLink>
+              {user ? (
+                <Badge className="pointer-events-none absolute -right-1 -top-1">
+                  {user.role === "superadmin" ? "S" : user.role === "admin" ? "A" : "C"}
+                </Badge>
+              ) : null}
+            </div>
             <div className="relative">
               <IconLink href="/carrito" label={`Carrito, ${cartCount} productos`}>
                 <ShoppingBagIcon data-icon="inline-start" />
