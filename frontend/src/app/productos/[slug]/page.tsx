@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { AddToCartButton } from "@/components/cart/add-to-cart-button"
 import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -90,9 +91,7 @@ export default async function ProductDetailPage({
           </div>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <Link href={`/carrito?producto=${product.slug}`}>Agregar al carrito</Link>
-          </Button>
+          <AddToCartButton product={product} />
           <Button asChild variant="secondary">
             <Link href="/productos">Volver al catalogo</Link>
           </Button>

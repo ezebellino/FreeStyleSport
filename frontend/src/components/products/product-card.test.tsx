@@ -1,13 +1,22 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
+import { CartProvider } from "@/components/cart/cart-provider"
 import { demoProducts, type Product } from "@/lib/products"
 
 import { ProductCard } from "./product-card"
 
+function renderProductCard(product: Product) {
+  return render(
+    <CartProvider>
+      <ProductCard product={product} />
+    </CartProvider>,
+  )
+}
+
 describe("ProductCard", () => {
   it("shows image, price, category, variants and product actions", () => {
-    render(<ProductCard product={demoProducts[0]} />)
+    renderProductCard(demoProducts[0])
 
     expect(screen.getByRole("img", { name: /remera deportiva negra/i })).toBeInTheDocument()
     expect(screen.getByText(/remera training oversize/i)).toBeInTheDocument()
@@ -28,7 +37,7 @@ describe("ProductCard", () => {
       attributes: {},
     }
 
-    render(<ProductCard product={product} />)
+    renderProductCard(product)
 
     expect(screen.getByText(/hombre/i)).toBeInTheDocument()
     expect(screen.getByText(/calzado/i)).toBeInTheDocument()
