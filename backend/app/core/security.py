@@ -18,7 +18,7 @@ def build_cookie_settings(settings: Settings, kind: Literal["session", "csrf"]) 
         "key": settings.session_cookie_name if kind == "session" else settings.csrf_cookie_name,
         "httponly": kind == "session",
         "secure": secure,
-        "samesite": "lax",
+        "samesite": "none" if secure else "lax",
         "domain": settings.cookie_domain,
         "path": "/",
     }
