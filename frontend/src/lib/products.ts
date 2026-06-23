@@ -54,6 +54,71 @@ export type ProductPayload = {
   }>
 }
 
+export const productCategories = [
+  { label: "Ropa", value: "ropa" },
+  { label: "Calzado", value: "calzado" },
+  { label: "Accesorios", value: "accesorios" },
+  { label: "Bebes", value: "bebes" },
+  { label: "Ninos", value: "ninos" },
+] as const
+
+export const productAudiences = [
+  { label: "Hombre", value: "hombre" },
+  { label: "Mujer", value: "mujer" },
+  { label: "Unisex", value: "unisex" },
+  { label: "Ninos", value: "ninos" },
+  { label: "Bebes", value: "bebes" },
+] as const
+
+const categoryLabels = new Map<string, string>(
+  productCategories.map((category) => [category.value, category.label])
+)
+const audienceLabels = new Map<string, string>(
+  productAudiences.map((audience) => [audience.value, audience.label])
+)
+
+function slugTokens(value?: string | null) {
+  return new Set((value ?? "").split("-").filter(Boolean))
+}
+
+export function getProductCategoryLabel(product: Product): string | null {
+  const categorySlug = product.category?.slug
+  const tokens = slugTokens(categorySlug)
+  const normalized =
+    tokens.has("calzado") || tokens.has("calzados")
+      ? "calzado"
+      : tokens.has("accesorios")
+        ? "accesorios"
+        : tokens.has("bebes")
+          ? "bebes"
+          : tokens.has("ninos") || tokens.has("kids")
+            ? "ninos"
+            : categorySlug
+
+  return (normalized && categoryLabels.get(normalized)) ?? product.category?.name ?? null
+}
+
+export function getProductAudienceLabel(product: Product): string | null {
+  const rawAudience =
+    typeof product.attributes.linea === "string"
+      ? product.attributes.linea
+      : typeof product.attributes.genero === "string"
+        ? product.attributes.genero
+        : null
+  const tokens = slugTokens(product.category?.slug)
+  const normalized =
+    rawAudience ??
+    (tokens.has("hombre")
+      ? "hombre"
+      : tokens.has("mujer")
+        ? "mujer"
+        : tokens.has("unisex")
+          ? "unisex"
+          : null)
+
+  return normalized ? (audienceLabels.get(normalized) ?? normalized) : null
+}
+
 export const demoProducts: Product[] = [
   {
     id: "demo-oversize",
@@ -65,8 +130,8 @@ export const demoProducts: Product[] = [
     base_price: 28900,
     compare_at_price: 34900,
     currency: "ARS",
-    attributes: { color: "Negro", material: "Dry fit" },
-    category: { id: "demo-cat-1", name: "Hombre", slug: "hombre" },
+    attributes: { color: "Negro", linea: "hombre", material: "Dry fit" },
+    category: { id: "demo-cat-1", name: "Ropa", slug: "ropa" },
     images: [
       {
         url: "https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=900&q=80",
@@ -124,9 +189,16 @@ export const demoProducts: Product[] = [
   },
 ]
 
-export async function fetchProducts(category?: string): Promise<Product[]> {
-  const searchParams = category ? `?category=${encodeURIComponent(category)}` : ""
-  const response = await fetch(`${publicApiUrl}/commerce/products${searchParams}`, {
+export async function fetchProducts(filters?: { category?: string; audience?: string }): Promise<Product[]> {
+  const searchParams = new URLSearchParams()
+  if (filters?.category) {
+    searchParams.set("category", filters.category)
+  }
+  if (filters?.audience) {
+    searchParams.set("linea", filters.audience)
+  }
+  const query = searchParams.size > 0 ? `?${searchParams.toString()}` : ""
+  const response = await fetch(`${publicApiUrl}/commerce/products${query}`, {
     cache: "no-store",
   })
   if (!response.ok) {

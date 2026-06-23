@@ -9,6 +9,14 @@ from app.modules.commerce.models import Category, Product, ProductImage, Product
 from app.modules.commerce.schemas import ProductCreate, ProductUpdate
 
 DEFAULT_TENANT_SLUG = "freestyle"
+AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
+CATEGORY_ALIASES = {
+    "calzado": {"calzado", "calzados", "zapatillas"},
+    "ropa": {"ropa", "indumentaria", "remeras", "pantalones", "conjuntos"},
+    "accesorios": {"accesorios", "accesorio"},
+    "bebes": {"bebes", "bebe"},
+    "ninos": {"ninos", "kids", "infantil"},
+}
 
 
 async def get_default_tenant(session: AsyncSession) -> Tenant | None:
@@ -58,23 +66,66 @@ def _product_options() -> tuple:
     )
 
 
+def _slug_tokens(slug: str | None) -> set[str]:
+    if not slug:
+        return set()
+    return {token for token in slug.split("-") if token}
+
+
+def _attribute_text(product: Product, key: str) -> str | None:
+    value = product.attributes.get(key)
+    return value.lower() if isinstance(value, str) else None
+
+
+def product_matches_catalog_filters(
+    product: Product,
+    category_slug: str | None = None,
+    audience_slug: str | None = None,
+) -> bool:
+    category_tokens = _slug_tokens(product.category.slug if product.category else None)
+
+    if category_slug:
+        accepted_category_tokens = CATEGORY_ALIASES.get(category_slug, {category_slug})
+        category_match = bool(category_tokens & accepted_category_tokens)
+        if not category_match:
+            return False
+
+    if audience_slug:
+        audience_match = (
+            _attribute_text(product, "linea") == audience_slug
+            or _attribute_text(product, "genero") == audience_slug
+            or audience_slug in category_tokens
+        )
+        if not audience_match:
+            return False
+
+    return True
+
+
 async def list_public_products(
     session: AsyncSession,
     category_slug: str | None = None,
+    audience_slug: str | None = None,
 ) -> Sequence[Product]:
     tenant = await get_default_tenant(session)
     if tenant is None:
         return []
+    if category_slug in AUDIENCE_FILTERS and audience_slug is None:
+        audience_slug = category_slug
+        category_slug = None
     statement = (
         select(Product)
         .options(*_product_options())
         .where(Product.tenant_id == tenant.id, Product.status == "published")
         .order_by(Product.created_at.desc())
     )
-    if category_slug:
-        statement = statement.join(Category).where(Category.slug == category_slug)
     result = await session.scalars(statement)
-    return result.unique().all()
+    products = result.unique().all()
+    return [
+        product
+        for product in products
+        if product_matches_catalog_filters(product, category_slug, audience_slug)
+    ]
 
 
 async def list_admin_products(session: AsyncSession) -> Sequence[Product]:

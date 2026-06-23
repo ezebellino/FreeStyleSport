@@ -11,8 +11,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { getCurrentUser, type PublicUser } from "@/lib/auth"
 
 const navItems = [
-  ["Hombre", "/productos?categoria=hombre"],
-  ["Mujer", "/productos?categoria=mujer"],
+  ["Hombre", "/productos?linea=hombre"],
+  ["Mujer", "/productos?linea=mujer"],
   ["Calzado", "/productos?categoria=calzado"],
   ["Accesorios", "/productos?categoria=accesorios"],
   ["Ofertas", "/ofertas"],

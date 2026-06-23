@@ -43,8 +43,9 @@ StoreAdminDependency = Annotated[PublicUser, Depends(require_store_admin)]
 async def products(
     session: SessionDependency,
     category: str | None = None,
+    linea: str | None = None,
 ) -> list[ProductRead]:
-    return list(await list_public_products(session, category))
+    return list(await list_public_products(session, category, linea))
 
 
 @router.get("/products/{slug}", response_model=ProductRead)

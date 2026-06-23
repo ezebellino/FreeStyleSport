@@ -2,7 +2,7 @@ import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { Product } from "@/lib/products"
+import { getProductAudienceLabel, getProductCategoryLabel, type Product } from "@/lib/products"
 
 import { ProductImage } from "./product-image"
 
@@ -21,6 +21,8 @@ export function ProductCard({ product }: Readonly<{ product: Product }>) {
   const hasOffer = product.compare_at_price && Number(product.compare_at_price) > Number(product.base_price)
   const stock = product.variants.reduce((total, variant) => total + variant.stock_quantity, 0)
   const variantLabels = product.variants.map((variant) => variant.label).slice(0, 4)
+  const categoryLabel = getProductCategoryLabel(product)
+  const audienceLabel = getProductAudienceLabel(product)
 
   return (
     <article className="group overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -45,7 +47,10 @@ export function ProductCard({ product }: Readonly<{ product: Product }>) {
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-lg font-semibold leading-tight">{product.name}</h2>
-            {product.category ? <Badge variant="outline">{product.category.name}</Badge> : null}
+            <div className="flex flex-wrap justify-end gap-1">
+              {audienceLabel ? <Badge variant="secondary">{audienceLabel}</Badge> : null}
+              {categoryLabel ? <Badge variant="outline">{categoryLabel}</Badge> : null}
+            </div>
           </div>
           <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{product.description}</p>
         </div>
