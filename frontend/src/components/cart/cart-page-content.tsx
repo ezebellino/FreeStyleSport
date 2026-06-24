@@ -9,6 +9,7 @@ import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
+import { createStoreOrder, type OrderCreatePayload } from "@/lib/orders"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
@@ -24,6 +25,17 @@ function buildWhatsAppHref(message: string) {
 export function CartPageContent() {
   const { items, total, incrementItem, decrementItem, removeItem, clearCart } = useCart()
   const [copied, setCopied] = useState(false)
+  const [customerName, setCustomerName] = useState("")
+  const [customerPhone, setCustomerPhone] = useState("")
+  const [customerEmail, setCustomerEmail] = useState("")
+  const [paymentMethod, setPaymentMethod] =
+    useState<OrderCreatePayload["payment_method"]>("to_confirm")
+  const [fulfillmentMethod, setFulfillmentMethod] =
+    useState<OrderCreatePayload["fulfillment_method"]>("pickup")
+  const [notes, setNotes] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [orderId, setOrderId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const message = useMemo(() => buildReservationMessage(items, total), [items, total])
   const whatsappHref = buildWhatsAppHref(message)
 
@@ -31,6 +43,58 @@ export function CartPageContent() {
     await navigator.clipboard.writeText(message)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1600)
+  }
+
+  async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+    setOrderId(null)
+    setIsSubmitting(true)
+
+    try {
+      const order = await createStoreOrder({
+        customer_name: customerName.trim() || undefined,
+        customer_phone: customerPhone.trim() || undefined,
+        customer_email: customerEmail.trim() || undefined,
+        payment_method: paymentMethod,
+        fulfillment_method: fulfillmentMethod,
+        notes: notes.trim() || undefined,
+        items: items.map((item) => ({
+          product_slug: item.slug,
+          quantity: item.quantity,
+        })),
+      })
+      setOrderId(order.id)
+      clearCart()
+    } catch (orderError) {
+      setError(orderError instanceof Error ? orderError.message : "No pudimos crear la reserva")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (orderId) {
+    return (
+      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl flex-col justify-center gap-6 px-4 py-16 md:px-8">
+        <Badge className="w-fit">Reserva creada</Badge>
+        <div className="space-y-3">
+          <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
+            Consulta guardada
+          </h1>
+          <p className="max-w-2xl text-muted-foreground">
+            Guardamos tu consulta con el código {orderId.slice(0, 8).toUpperCase()}. El local puede revisarla desde el panel y coordinar el próximo paso.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/productos">Seguir viendo productos</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/ayuda">Ver servicios de compra</Link>
+          </Button>
+        </div>
+      </section>
+    )
   }
 
   if (items.length === 0) {
@@ -118,6 +182,101 @@ export function CartPageContent() {
             <span>{formatCartPrice(total)}</span>
           </div>
         </div>
+
+        <form className="space-y-3" onSubmit={submitOrder}>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold" htmlFor="customer-name">
+              Nombre
+            </label>
+            <input
+              id="customer-name"
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              placeholder="Tu nombre"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold" htmlFor="customer-phone">
+              Teléfono o WhatsApp
+            </label>
+            <input
+              id="customer-phone"
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              value={customerPhone}
+              onChange={(event) => setCustomerPhone(event.target.value)}
+              placeholder="Ej: 2245..."
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold" htmlFor="customer-email">
+              Email
+            </label>
+            <input
+              id="customer-email"
+              type="email"
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              value={customerEmail}
+              onChange={(event) => setCustomerEmail(event.target.value)}
+              placeholder="opcional"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold" htmlFor="payment-method">
+                Pago
+              </label>
+              <select
+                id="payment-method"
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                value={paymentMethod}
+                onChange={(event) =>
+                  setPaymentMethod(event.target.value as OrderCreatePayload["payment_method"])
+                }
+              >
+                <option value="to_confirm">A confirmar</option>
+                <option value="cash">Efectivo</option>
+                <option value="transfer">Transferencia</option>
+                <option value="mercado_pago">Mercado Pago</option>
+                <option value="card">Tarjeta</option>
+                <option value="wallet">Billetera virtual</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold" htmlFor="fulfillment-method">
+                Entrega
+              </label>
+              <select
+                id="fulfillment-method"
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                value={fulfillmentMethod}
+                onChange={(event) =>
+                  setFulfillmentMethod(event.target.value as OrderCreatePayload["fulfillment_method"])
+                }
+              >
+                <option value="pickup">Retiro en local</option>
+                <option value="shipping">Envío</option>
+                <option value="local_payment">Pago en el local</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold" htmlFor="order-notes">
+              Comentario
+            </label>
+            <textarea
+              id="order-notes"
+              className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Talle, color, horario de retiro o cualquier aclaración."
+            />
+          </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <Button className="w-full" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Creando reserva..." : "Crear reserva"}
+          </Button>
+        </form>
 
         <div className="rounded-2xl border bg-secondary/50 p-4 text-sm leading-6 text-muted-foreground">
           <p className="font-semibold text-foreground">Medios de pago</p>

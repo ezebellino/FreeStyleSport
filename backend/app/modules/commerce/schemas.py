@@ -4,6 +4,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 ProductStatus = Literal["draft", "published", "paused", "archived"]
+OrderStatus = Literal["pending", "confirmed", "preparing", "ready", "delivered", "cancelled"]
+PaymentMethod = Literal["to_confirm", "cash", "transfer", "mercado_pago", "card", "wallet"]
+FulfillmentMethod = Literal["pickup", "shipping", "local_payment"]
 
 
 class CategoryRead(BaseModel):
@@ -106,3 +109,51 @@ class ProductRead(BaseModel):
     category: CategoryRead | None = None
     images: list[ProductImageRead]
     variants: list[ProductVariantRead]
+
+
+class OrderItemCreate(BaseModel):
+    product_slug: str = Field(min_length=1, max_length=160)
+    quantity: int = Field(default=1, ge=1, le=99)
+
+
+class OrderCreate(BaseModel):
+    customer_name: str | None = Field(default=None, max_length=160)
+    customer_email: str | None = Field(default=None, max_length=240)
+    customer_phone: str | None = Field(default=None, max_length=80)
+    payment_method: PaymentMethod = "to_confirm"
+    fulfillment_method: FulfillmentMethod = "pickup"
+    notes: str | None = Field(default=None, max_length=1000)
+    items: list[OrderItemCreate] = Field(min_length=1, max_length=80)
+
+
+class OrderItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    product_id: str | None = None
+    product_slug: str
+    product_name: str
+    image_url: str | None = None
+    unit_price: Decimal
+    quantity: int
+    line_total: Decimal
+    currency: str
+    attributes: dict[str, object]
+
+
+class OrderRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    status: str
+    customer_name: str | None = None
+    customer_email: str | None = None
+    customer_phone: str | None = None
+    payment_method: str
+    fulfillment_method: str
+    notes: str | None = None
+    subtotal: Decimal
+    total: Decimal
+    currency: str
+    order_metadata: dict[str, object] = Field(default_factory=dict, serialization_alias="metadata")
+    items: list[OrderItemRead]
