@@ -16,6 +16,7 @@ export type OrderCreatePayload = {
 export type OrderRead = {
   id: string
   status: string
+  payment_status: string
   customer_name?: string | null
   customer_email?: string | null
   customer_phone?: string | null
@@ -65,12 +66,15 @@ export async function listAdminOrders(): Promise<OrderRead[]> {
   return response.json() as Promise<OrderRead[]>
 }
 
-export async function updateAdminOrderStatus(orderId: string, status: string): Promise<OrderRead> {
+export async function updateAdminOrder(
+  orderId: string,
+  payload: { status?: string; payment_status?: string },
+): Promise<OrderRead> {
   const response = await fetch(`${publicApiUrl}/commerce/admin/orders/${orderId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
@@ -79,4 +83,15 @@ export async function updateAdminOrderStatus(orderId: string, status: string): P
   }
 
   return response.json() as Promise<OrderRead>
+}
+
+export async function updateAdminOrderStatus(orderId: string, status: string): Promise<OrderRead> {
+  return updateAdminOrder(orderId, { status })
+}
+
+export async function updateAdminOrderPaymentStatus(
+  orderId: string,
+  paymentStatus: string,
+): Promise<OrderRead> {
+  return updateAdminOrder(orderId, { payment_status: paymentStatus })
 }

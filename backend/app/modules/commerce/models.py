@@ -168,6 +168,7 @@ class Order(Base):
         index=True,
     )
     status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+    payment_status: Mapped[str] = mapped_column(String(32), default="unpaid", index=True)
     customer_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     customer_email: Mapped[str | None] = mapped_column(String(240), nullable=True)
     customer_phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
