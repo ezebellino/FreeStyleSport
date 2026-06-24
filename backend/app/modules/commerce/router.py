@@ -6,10 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.session import get_session
-from app.modules.commerce.schemas import ProductCreate, ProductRead, ProductUpdate
+from app.modules.commerce.schemas import (
+    OrderCreate,
+    OrderRead,
+    ProductCreate,
+    ProductRead,
+    ProductUpdate,
+)
 from app.modules.commerce.service import (
+    create_order,
     create_product,
     get_public_product_by_slug,
+    list_admin_orders,
     list_admin_products,
     list_public_products,
     update_product,
@@ -53,12 +61,32 @@ async def product_detail(slug: str, session: SessionDependency) -> ProductRead:
     return await get_public_product_by_slug(session, slug)
 
 
+@router.post("/orders", response_model=OrderRead, status_code=201)
+async def order_create(
+    payload: OrderCreate,
+    request: Request,
+    session: SessionDependency,
+) -> OrderRead:
+    order = await create_order(session, payload)
+    await record_audit_event(session, request, "commerce.order_created", None)
+    await session.commit()
+    return order
+
+
 @router.get("/admin/products", response_model=list[ProductRead])
 async def admin_products(
     session: SessionDependency,
     admin: StoreAdminDependency,
 ) -> list[ProductRead]:
     return list(await list_admin_products(session))
+
+
+@router.get("/admin/orders", response_model=list[OrderRead])
+async def admin_orders(
+    session: SessionDependency,
+    admin: StoreAdminDependency,
+) -> list[OrderRead]:
+    return list(await list_admin_orders(session))
 
 
 @router.post("/admin/products", response_model=ProductRead, status_code=201)

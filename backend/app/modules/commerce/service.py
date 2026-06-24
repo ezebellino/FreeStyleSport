@@ -5,8 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import ApiError
-from app.modules.commerce.models import Category, Product, ProductImage, ProductVariant, Tenant
-from app.modules.commerce.schemas import ProductCreate, ProductUpdate
+from app.modules.commerce.models import (
+    Category,
+    Order,
+    OrderItem,
+    Product,
+    ProductImage,
+    ProductVariant,
+    Tenant,
+)
+from app.modules.commerce.schemas import OrderCreate, ProductCreate, ProductUpdate
 
 DEFAULT_TENANT_SLUG = "freestyle"
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
@@ -63,6 +71,12 @@ def _product_options() -> tuple:
         selectinload(Product.category),
         selectinload(Product.images),
         selectinload(Product.variants),
+    )
+
+
+def _order_options() -> tuple:
+    return (
+        selectinload(Order.items),
     )
 
 
@@ -262,3 +276,88 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
     await session.commit()
     await session.refresh(product, attribute_names=["category", "images", "variants"])
     return product
+
+
+async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
+    tenant = await get_or_create_default_tenant(session)
+    requested_quantities: dict[str, int] = {}
+    for item in payload.items:
+        requested_quantities[item.product_slug] = (
+            requested_quantities.get(item.product_slug, 0) + item.quantity
+        )
+
+    products = await session.scalars(
+        select(Product)
+        .options(*_product_options())
+        .where(
+            Product.tenant_id == tenant.id,
+            Product.status == "published",
+            Product.slug.in_(requested_quantities.keys()),
+        )
+    )
+    products_by_slug = {product.slug: product for product in products.unique().all()}
+    missing_slugs = sorted(set(requested_quantities) - set(products_by_slug))
+    if missing_slugs:
+        raise ApiError(
+            404,
+            "order_product_unavailable",
+            f"No encontramos estos productos: {', '.join(missing_slugs)}",
+        )
+
+    currency = next(iter(products_by_slug.values())).currency if products_by_slug else "ARS"
+    order_items: list[OrderItem] = []
+    subtotal = 0
+    for slug, quantity in requested_quantities.items():
+        product = products_by_slug[slug]
+        unit_price = product.base_price
+        line_total = unit_price * quantity
+        subtotal += line_total
+        order_items.append(
+            OrderItem(
+                product_id=product.id,
+                product_slug=product.slug,
+                product_name=product.name,
+                image_url=product.images[0].url if product.images else None,
+                unit_price=unit_price,
+                quantity=quantity,
+                line_total=line_total,
+                currency=product.currency,
+                attributes={
+                    "category": product.category.slug if product.category else None,
+                    "brand": product.brand,
+                },
+            )
+        )
+
+    order = Order(
+        tenant_id=tenant.id,
+        status="pending",
+        customer_name=payload.customer_name,
+        customer_email=payload.customer_email,
+        customer_phone=payload.customer_phone,
+        payment_method=payload.payment_method,
+        fulfillment_method=payload.fulfillment_method,
+        notes=payload.notes,
+        subtotal=subtotal,
+        total=subtotal,
+        currency=currency,
+        order_metadata={"source": "storefront_cart"},
+    )
+    order.items = order_items
+    session.add(order)
+    await session.commit()
+    await session.refresh(order, attribute_names=["items"])
+    return order
+
+
+async def list_admin_orders(session: AsyncSession) -> Sequence[Order]:
+    tenant = await get_default_tenant(session)
+    if tenant is None:
+        return []
+    result = await session.scalars(
+        select(Order)
+        .options(*_order_options())
+        .where(Order.tenant_id == tenant.id)
+        .order_by(Order.created_at.desc())
+    )
+    return result.unique().all()

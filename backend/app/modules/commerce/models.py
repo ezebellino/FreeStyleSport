@@ -37,6 +37,7 @@ class Tenant(Base):
 
     categories: Mapped[list["Category"]] = relationship(back_populates="tenant")
     products: Mapped[list["Product"]] = relationship(back_populates="tenant")
+    orders: Mapped[list["Order"]] = relationship(back_populates="tenant")
 
 
 class Category(Base):
@@ -110,6 +111,7 @@ class Product(Base):
         cascade="all, delete-orphan",
         order_by="ProductVariant.sort_order",
     )
+    order_items: Mapped[list["OrderItem"]] = relationship(back_populates="product")
 
 
 class ProductImage(Base):
@@ -155,3 +157,64 @@ class ProductVariant(Base):
     )
 
     product: Mapped[Product] = relationship(back_populates="variants")
+
+
+class Order(Base):
+    __tablename__ = "commerce_orders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+    customer_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    customer_email: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    customer_phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    payment_method: Mapped[str] = mapped_column(String(40), default="to_confirm")
+    fulfillment_method: Mapped[str] = mapped_column(String(40), default="pickup")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    total: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="ARS")
+    order_metadata: Mapped[dict[str, object]] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    tenant: Mapped[Tenant] = relationship(back_populates="orders")
+    items: Mapped[list["OrderItem"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderItem.created_at",
+    )
+
+
+class OrderItem(Base):
+    __tablename__ = "commerce_order_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    order_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_orders.id", ondelete="CASCADE"),
+        index=True,
+    )
+    product_id: Mapped[str | None] = mapped_column(
+        ForeignKey("commerce_products.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    product_slug: Mapped[str] = mapped_column(String(160))
+    product_name: Mapped[str] = mapped_column(String(200))
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    quantity: Mapped[int] = mapped_column(Integer)
+    line_total: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="ARS")
+    attributes: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    order: Mapped[Order] = relationship(back_populates="items")
+    product: Mapped[Product | None] = relationship(back_populates="order_items")
