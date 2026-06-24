@@ -195,6 +195,27 @@ def test_logout_requires_matching_csrf_header() -> None:
     assert response.json()["code"] == "csrf_failed"
 
 
+def test_logout_revokes_session_and_clears_cookies() -> None:
+    client = build_client()
+    client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+    client.post(
+        "/identity/login",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+    csrf_token = client.cookies.get("fs_csrf")
+
+    response = client.post("/identity/logout", headers={"x-csrf-token": csrf_token})
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert client.cookies.get("fs_session") is None
+    assert client.cookies.get("fs_csrf") is None
+    assert client.get("/identity/me").status_code == 401
+
+
 def test_register_returns_plain_confirmation_message() -> None:
     client = build_client()
 
