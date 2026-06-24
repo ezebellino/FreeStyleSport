@@ -129,6 +129,7 @@ export function ProductAdminPanel() {
                 (total, variant) => total + variant.stock_quantity,
                 0,
               )
+              const variantLabels = product.variants.map((variant) => variant.label).slice(0, 5)
               return (
                 <article
                   key={product.id}
@@ -151,8 +152,17 @@ export function ProductAdminPanel() {
                         {formatCartPrice(Number(product.base_price))}
                       </span>
                       <span className="rounded-full border px-2 py-1">Stock {stock}</span>
+                      <span className="rounded-full border px-2 py-1">
+                        {product.variants.length} variantes
+                      </span>
                       <span className="rounded-full border px-2 py-1">/{product.slug}</span>
                     </div>
+                    {variantLabels.length > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Variantes: {variantLabels.join(", ")}
+                        {product.variants.length > variantLabels.length ? "..." : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <Button type="button" onClick={() => setSelectedProduct(product)}>
                     <Edit3Icon data-icon="inline-start" />
