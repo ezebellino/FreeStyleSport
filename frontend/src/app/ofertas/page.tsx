@@ -38,6 +38,9 @@ export default function OffersPage() {
         <Button asChild className="w-fit">
           <Link href="/productos">Ver productos</Link>
         </Button>
+        <Button asChild className="w-fit" variant="secondary">
+          <Link href="/ayuda">Ver servicios de compra</Link>
+        </Button>
       </div>
       <div className="overflow-hidden rounded-3xl border bg-card">
         <Image

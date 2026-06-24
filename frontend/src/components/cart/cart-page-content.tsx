@@ -147,6 +147,9 @@ export function CartPageContent() {
         <p className="text-xs leading-5 text-muted-foreground">
           Mercado Pago y transferencia quedan preparados como próximos medios de cierre cuando definamos credenciales y operación.
         </p>
+        <Button asChild className="w-full" variant="outline">
+          <Link href="/ayuda">Ver servicios y condiciones</Link>
+        </Button>
       </aside>
     </section>
   )

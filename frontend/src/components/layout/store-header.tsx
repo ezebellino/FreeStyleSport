@@ -18,6 +18,7 @@ const navItems = [
   ["Calzado", "/productos?categoria=calzado"],
   ["Accesorios", "/productos?categoria=accesorios"],
   ["Ofertas", "/ofertas"],
+  ["Ayuda", "/ayuda"],
 ] as const
 
 function IconLink({
