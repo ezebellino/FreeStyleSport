@@ -82,9 +82,15 @@ function slugTokens(value?: string | null) {
 }
 
 export function getProductCategoryLabel(product: Product): string | null {
-  const categorySlug = product.category?.slug
+  const normalized = getProductCategoryValue(product)
+
+  return (normalized && categoryLabels.get(normalized)) ?? product.category?.name ?? null
+}
+
+export function getProductCategoryValue(product: Product): string | null {
+  const categorySlug = product.category?.slug ?? null
   const tokens = slugTokens(categorySlug)
-  const normalized =
+  return (
     tokens.has("calzado") || tokens.has("calzados")
       ? "calzado"
       : tokens.has("accesorios")
@@ -94,19 +100,24 @@ export function getProductCategoryLabel(product: Product): string | null {
           : tokens.has("ninos") || tokens.has("kids")
             ? "ninos"
             : categorySlug
-
-  return (normalized && categoryLabels.get(normalized)) ?? product.category?.name ?? null
+  )
 }
 
 export function getProductAudienceLabel(product: Product): string | null {
+  const normalized = getProductAudienceValue(product)
+
+  return normalized ? (audienceLabels.get(normalized) ?? normalized) : null
+}
+
+export function getProductAudienceValue(product: Product): string | null {
   const rawAudience =
     typeof product.attributes.linea === "string"
-      ? product.attributes.linea
+      ? product.attributes.linea.toLowerCase()
       : typeof product.attributes.genero === "string"
-        ? product.attributes.genero
+        ? product.attributes.genero.toLowerCase()
         : null
   const tokens = slugTokens(product.category?.slug)
-  const normalized =
+  return (
     rawAudience ??
     (tokens.has("hombre")
       ? "hombre"
@@ -115,8 +126,7 @@ export function getProductAudienceLabel(product: Product): string | null {
         : tokens.has("unisex")
           ? "unisex"
           : null)
-
-  return normalized ? (audienceLabels.get(normalized) ?? normalized) : null
+  )
 }
 
 export const demoProducts: Product[] = [
@@ -217,6 +227,31 @@ export async function createAdminProduct(payload: ProductPayload): Promise<Produ
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as { message?: string } | null
     throw new Error(error?.message ?? "No pudimos guardar el producto")
+  }
+  return response.json() as Promise<Product>
+}
+
+export async function listAdminProducts(): Promise<Product[]> {
+  const response = await fetch(`${publicApiUrl}/commerce/admin/products`, {
+    credentials: "include",
+  })
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos cargar los productos")
+  }
+  return response.json() as Promise<Product[]>
+}
+
+export async function updateAdminProduct(productId: string, payload: ProductPayload): Promise<Product> {
+  const response = await fetch(`${publicApiUrl}/commerce/admin/products/${productId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos actualizar el producto")
   }
   return response.json() as Promise<Product>
 }
