@@ -1,7 +1,5 @@
-import Link from "next/link"
-
+import { ProfileSessionCard } from "@/components/auth/profile-session-card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 
 const profileSections = [
   {
@@ -41,26 +39,7 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        <div className="rounded-3xl border bg-card p-6 text-card-foreground shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground">Cuenta de cliente</p>
-          <div className="mt-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xl font-semibold">Acceso personal</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Entra o crea tu cuenta para guardar tus datos y preparar tus pedidos.
-              </p>
-            </div>
-            <Badge>Seguro</Badge>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href="/login">Iniciar sesion</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/registro">Crear cuenta</Link>
-            </Button>
-          </div>
-        </div>
+        <ProfileSessionCard />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

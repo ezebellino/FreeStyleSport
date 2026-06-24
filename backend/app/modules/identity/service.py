@@ -11,7 +11,7 @@ from app.core.errors import ApiError
 from app.db.session import get_session
 from app.modules.identity.audit import record_audit_event
 from app.modules.identity.confirmations import ConfirmationTokens, confirmation_link
-from app.modules.identity.email import EmailSender, build_confirmation_email
+from app.modules.identity.email import EmailSender, EmailSendError, build_confirmation_email
 from app.modules.identity.models import EmailConfirmation, User, UserSession
 from app.modules.identity.passwords import PasswordHasher
 from app.modules.identity.schemas import (
@@ -79,7 +79,17 @@ async def _send_confirmation_email(
     raw_token: str,
 ) -> None:
     link = confirmation_link(settings, raw_token)
-    await email_sender.send(build_confirmation_email(email, link))
+    try:
+        await email_sender.send(build_confirmation_email(email, link))
+    except EmailSendError as exc:
+        raise ApiError(
+            502,
+            "confirmation_email_failed",
+            (
+                "Creamos la cuenta, pero no pudimos enviar el correo de confirmacion. "
+                "Intentalo de nuevo en unos minutos."
+            ),
+        ) from exc
 
 
 class SqlAlchemyIdentityService:
@@ -183,12 +193,11 @@ class SqlAlchemyIdentityService:
         for confirmation in confirmations:
             confirmation.used_at = now
 
-    async def _create_confirmation(
+    async def _issue_confirmation(
         self,
         user: User,
         settings: Settings,
-        email_sender: EmailSender,
-    ) -> None:
+    ) -> str:
         await self._expire_unused_confirmations(user.id)
         issued = ConfirmationTokens.issue(
             timedelta(seconds=settings.email_confirmation_ttl_seconds)
@@ -200,7 +209,7 @@ class SqlAlchemyIdentityService:
                 expires_at=issued.expires_at,
             )
         )
-        await _send_confirmation_email(email_sender, settings, user.email, issued.raw_token)
+        return issued.raw_token
 
     async def register(
         self,
@@ -212,8 +221,23 @@ class SqlAlchemyIdentityService:
         email = payload.email.lower()
         existing_user = await self._session.scalar(select(User).where(User.email == email))
         if existing_user is not None:
-            await record_audit_event(self._session, request, "identity.register_existing")
+            raw_token = None
+            if existing_user.email_confirmed_at is None:
+                raw_token = await self._issue_confirmation(existing_user, settings)
+            await record_audit_event(
+                self._session,
+                request,
+                "identity.register_existing",
+                existing_user.id,
+            )
             await self._session.commit()
+            if raw_token is not None:
+                await _send_confirmation_email(
+                    email_sender,
+                    settings,
+                    existing_user.email,
+                    raw_token,
+                )
             return
 
         user = User(
@@ -224,9 +248,10 @@ class SqlAlchemyIdentityService:
         )
         self._session.add(user)
         await self._session.flush()
-        await self._create_confirmation(user, settings, email_sender)
+        raw_token = await self._issue_confirmation(user, settings)
         await record_audit_event(self._session, request, "identity.register", user.id)
         await self._session.commit()
+        await _send_confirmation_email(email_sender, settings, user.email, raw_token)
 
     async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None:
         confirmation = await self._session.scalar(
@@ -264,8 +289,9 @@ class SqlAlchemyIdentityService:
         if user is None or user.email_confirmed_at is not None:
             return
 
-        await self._create_confirmation(user, settings, email_sender)
+        raw_token = await self._issue_confirmation(user, settings)
         await self._session.commit()
+        await _send_confirmation_email(email_sender, settings, user.email, raw_token)
 
 
 SessionDependency = Annotated[AsyncSession, Depends(get_session)]

@@ -71,6 +71,16 @@ export async function loginUser(email: string, password: string): Promise<Public
   return parseAuthResponse<PublicUser>(response)
 }
 
+export async function logoutUser(): Promise<void> {
+  const response = await fetch(`${publicApiUrl}/identity/logout`, {
+    method: "POST",
+    headers: buildCsrfHeaders(document.cookie),
+    credentials: "include",
+  })
+
+  await parseAuthResponse<{ status: string }>(response)
+}
+
 export async function getCurrentUser(): Promise<PublicUser | null> {
   const response = await fetch(`${publicApiUrl}/identity/me`, {
     credentials: "include",

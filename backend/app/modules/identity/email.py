@@ -17,6 +17,10 @@ class EmailSender(Protocol):
     async def send(self, message: EmailMessage) -> None: ...
 
 
+class EmailSendError(RuntimeError):
+    pass
+
+
 @dataclass(slots=True)
 class ConsoleEmailSender:
     messages: list[EmailMessage] = field(default_factory=list)
@@ -32,21 +36,26 @@ class ResendEmailSender:
         self._settings = settings
 
     async def send(self, message: EmailMessage) -> None:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {self._settings.resend_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "from": self._settings.email_from,
-                    "to": [message.to],
-                    "subject": message.subject,
-                    "html": message.html,
-                },
-            )
-        response.raise_for_status()
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {self._settings.resend_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "from": self._settings.email_from,
+                        "to": [message.to],
+                        "subject": message.subject,
+                        "html": message.html,
+                    },
+                )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise EmailSendError("Email provider rejected the message") from exc
+        except httpx.HTTPError as exc:
+            raise EmailSendError("Email provider request failed") from exc
 
 
 def build_confirmation_email(to: str, link: str) -> EmailMessage:
