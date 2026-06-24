@@ -18,6 +18,7 @@ from app.modules.commerce.schemas import OrderCreate, OrderUpdate, ProductCreate
 
 DEFAULT_TENANT_SLUG = "freestyle"
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
+PAID_REQUIRED_ORDER_STATUSES = {"preparing", "ready", "delivered"}
 CATEGORY_ALIASES = {
     "calzado": {"calzado", "calzados", "zapatillas"},
     "ropa": {"ropa", "indumentaria", "remeras", "pantalones", "conjuntos"},
@@ -332,6 +333,7 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
     order = Order(
         tenant_id=tenant.id,
         status="pending",
+        payment_status="unpaid",
         customer_name=payload.customer_name,
         customer_email=payload.customer_email,
         customer_phone=payload.customer_phone,
@@ -375,7 +377,19 @@ async def update_order(session: AsyncSession, order_id: str, payload: OrderUpdat
     if order is None:
         raise ApiError(404, "order_not_found", "No encontramos esa reserva")
 
-    order.status = payload.status
+    next_status = payload.status or order.status
+    next_payment_status = payload.payment_status or order.payment_status
+    if next_status in PAID_REQUIRED_ORDER_STATUSES and next_payment_status != "paid":
+        raise ApiError(
+            409,
+            "order_payment_required",
+            "Para avanzar esta reserva primero tenes que confirmar el pago",
+        )
+
+    if payload.status is not None:
+        order.status = payload.status
+    if payload.payment_status is not None:
+        order.payment_status = payload.payment_status
     await session.commit()
     await session.refresh(order, attribute_names=["items"])
     return order

@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 ProductStatus = Literal["draft", "published", "paused", "archived"]
 OrderStatus = Literal["pending", "confirmed", "preparing", "ready", "delivered", "cancelled"]
+PaymentStatus = Literal["unpaid", "pending", "paid", "failed", "refunded"]
 PaymentMethod = Literal["to_confirm", "cash", "transfer", "mercado_pago", "card", "wallet"]
 FulfillmentMethod = Literal["pickup", "shipping", "local_payment"]
 
@@ -146,6 +147,7 @@ class OrderRead(BaseModel):
 
     id: str
     status: str
+    payment_status: str
     customer_name: str | None = None
     customer_email: str | None = None
     customer_phone: str | None = None
@@ -160,4 +162,5 @@ class OrderRead(BaseModel):
 
 
 class OrderUpdate(BaseModel):
-    status: OrderStatus
+    status: OrderStatus | None = None
+    payment_status: PaymentStatus | None = None
