@@ -21,3 +21,4 @@ def test_commerce_routes_are_registered() -> None:
     assert "/commerce/admin/products" in paths
     assert "/commerce/admin/products/{product_id}" in paths
     assert "/commerce/admin/orders" in paths
+    assert "/commerce/admin/orders/{order_id}" in paths

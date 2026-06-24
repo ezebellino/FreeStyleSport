@@ -14,7 +14,7 @@ from app.modules.commerce.models import (
     ProductVariant,
     Tenant,
 )
-from app.modules.commerce.schemas import OrderCreate, ProductCreate, ProductUpdate
+from app.modules.commerce.schemas import OrderCreate, OrderUpdate, ProductCreate, ProductUpdate
 
 DEFAULT_TENANT_SLUG = "freestyle"
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
@@ -361,3 +361,21 @@ async def list_admin_orders(session: AsyncSession) -> Sequence[Order]:
         .order_by(Order.created_at.desc())
     )
     return result.unique().all()
+
+
+async def update_order(session: AsyncSession, order_id: str, payload: OrderUpdate) -> Order:
+    tenant = await get_default_tenant(session)
+    if tenant is None:
+        raise ApiError(404, "order_not_found", "No encontramos esa reserva")
+    order = await session.scalar(
+        select(Order)
+        .options(*_order_options())
+        .where(Order.tenant_id == tenant.id, Order.id == order_id)
+    )
+    if order is None:
+        raise ApiError(404, "order_not_found", "No encontramos esa reserva")
+
+    order.status = payload.status
+    await session.commit()
+    await session.refresh(order, attribute_names=["items"])
+    return order

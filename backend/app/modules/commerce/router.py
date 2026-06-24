@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.modules.commerce.schemas import (
     OrderCreate,
     OrderRead,
+    OrderUpdate,
     ProductCreate,
     ProductRead,
     ProductUpdate,
@@ -20,6 +21,7 @@ from app.modules.commerce.service import (
     list_admin_orders,
     list_admin_products,
     list_public_products,
+    update_order,
     update_product,
 )
 from app.modules.identity.audit import record_audit_event
@@ -87,6 +89,25 @@ async def admin_orders(
     admin: StoreAdminDependency,
 ) -> list[OrderRead]:
     return list(await list_admin_orders(session))
+
+
+@router.patch("/admin/orders/{order_id}", response_model=OrderRead)
+async def admin_update_order(
+    order_id: str,
+    payload: OrderUpdate,
+    request: Request,
+    session: SessionDependency,
+    admin: StoreAdminDependency,
+) -> OrderRead:
+    order = await update_order(session, order_id, payload)
+    await record_audit_event(
+        session,
+        request,
+        "commerce.order_updated",
+        getattr(admin, "id", None),
+    )
+    await session.commit()
+    return order
 
 
 @router.post("/admin/products", response_model=ProductRead, status_code=201)

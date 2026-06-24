@@ -157,3 +157,7 @@ class OrderRead(BaseModel):
     currency: str
     order_metadata: dict[str, object] = Field(default_factory=dict, serialization_alias="metadata")
     items: list[OrderItemRead]
+
+
+class OrderUpdate(BaseModel):
+    status: OrderStatus

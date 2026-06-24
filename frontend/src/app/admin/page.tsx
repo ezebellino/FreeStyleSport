@@ -1,6 +1,7 @@
 import Link from "next/link"
 
-import { ProductAdminForm } from "@/components/products/product-admin-form"
+import { OrderAdminPanel } from "@/components/orders/order-admin-panel"
+import { ProductAdminPanel } from "@/components/products/product-admin-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
@@ -35,14 +36,17 @@ export default function AdminPage() {
       </div>
 
       <div className="space-y-4">
+        <OrderAdminPanel />
+      </div>
+
+      <div className="space-y-4">
         <div>
-          <h2 className="text-2xl font-black">Cargar producto</h2>
+          <h2 className="text-2xl font-black">Catálogo</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            El rol admin puede cargar nombre, precio, imagen, descripcion, categoria y stock.
-            La imagen puede ser una URL de Cloudinary u otro enlace publico.
+            El rol admin puede cargar y editar nombre, precio, imagen, descripcion, categoria y stock.
           </p>
         </div>
-        <ProductAdminForm />
+        <ProductAdminPanel />
       </div>
 
       <Button asChild variant="secondary" className="w-fit">
