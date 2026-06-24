@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { OrderAdminPanel } from "@/components/orders/order-admin-panel"
 import { ProductAdminForm } from "@/components/products/product-admin-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,10 @@ export default function AdminPage() {
             falta.
           </p>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <OrderAdminPanel />
       </div>
 
       <div className="space-y-4">

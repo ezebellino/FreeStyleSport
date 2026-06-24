@@ -16,9 +16,25 @@ export type OrderCreatePayload = {
 export type OrderRead = {
   id: string
   status: string
+  customer_name?: string | null
+  customer_email?: string | null
+  customer_phone?: string | null
+  payment_method: string
+  fulfillment_method: string
+  notes?: string | null
   subtotal: string | number
   total: string | number
   currency: string
+  items: Array<{
+    id: string
+    product_slug: string
+    product_name: string
+    image_url?: string | null
+    unit_price: string | number
+    quantity: number
+    line_total: string | number
+    currency: string
+  }>
 }
 
 export async function createStoreOrder(payload: OrderCreatePayload): Promise<OrderRead> {
@@ -31,6 +47,35 @@ export async function createStoreOrder(payload: OrderCreatePayload): Promise<Ord
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as { message?: string } | null
     throw new Error(error?.message ?? "No pudimos crear la reserva")
+  }
+
+  return response.json() as Promise<OrderRead>
+}
+
+export async function listAdminOrders(): Promise<OrderRead[]> {
+  const response = await fetch(`${publicApiUrl}/commerce/admin/orders`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos cargar las reservas")
+  }
+
+  return response.json() as Promise<OrderRead[]>
+}
+
+export async function updateAdminOrderStatus(orderId: string, status: string): Promise<OrderRead> {
+  const response = await fetch(`${publicApiUrl}/commerce/admin/orders/${orderId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ status }),
+  })
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos actualizar la reserva")
   }
 
   return response.json() as Promise<OrderRead>
