@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { showError, showSuccess } from "@/lib/alerts"
 import { AuthApiError, loginUser } from "@/lib/auth"
 
 export default function LoginPage() {
@@ -26,15 +27,22 @@ export default function LoginPage() {
     try {
       const user = await loginUser(email, password)
       setMessage("Ingreso correcto. Te estamos llevando a tu cuenta.")
+      void showSuccess("Ingreso correcto", "Te estamos llevando a tu cuenta.")
       router.replace(user.role === "superadmin" || user.role === "admin" ? "/admin" : "/perfil")
       router.refresh()
     } catch (caught) {
       if (caught instanceof AuthApiError && caught.code === "email_not_confirmed") {
-        setError("Primero confirma tu correo. Revisa tu bandeja de entrada o solicita un nuevo enlace.")
+        const message =
+          "Primero confirma tu correo. Revisa tu bandeja de entrada o solicita un nuevo enlace."
+        setError(message)
+        void showError("Correo sin confirmar", message)
       } else if (caught instanceof AuthApiError) {
         setError(caught.message)
+        void showError("No pudimos iniciar sesion", caught.message)
       } else {
-        setError("No pudimos iniciar sesion. Intentalo de nuevo.")
+        const message = "No pudimos iniciar sesion. Intentalo de nuevo."
+        setError(message)
+        void showError("No pudimos iniciar sesion", message)
       }
     } finally {
       setIsSubmitting(false)

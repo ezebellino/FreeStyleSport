@@ -41,6 +41,8 @@ class IdentityService(Protocol):
 
     async def current_user(self, raw_session_token: str | None) -> PublicUser: ...
 
+    async def csrf_token(self, raw_session_token: str | None) -> str: ...
+
     async def logout(self, raw_session_token: str | None, request: Request) -> None: ...
 
     async def register(
@@ -175,6 +177,10 @@ class SqlAlchemyIdentityService:
     async def current_user(self, raw_session_token: str | None) -> PublicUser:
         user_session = await self._session_from_token(raw_session_token)
         return _public_user(user_session.user)
+
+    async def csrf_token(self, raw_session_token: str | None) -> str:
+        user_session = await self._session_from_token(raw_session_token)
+        return user_session.csrf_token
 
     async def logout(self, raw_session_token: str | None, request: Request) -> None:
         user_session = await self._session_from_token(raw_session_token)
