@@ -27,15 +27,15 @@ export function ProductCard({ product }: Readonly<{ product: Product }>) {
 
   return (
     <article className="group overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-      <div className="relative aspect-[4/5] overflow-hidden bg-secondary">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]">
         {mainImage ? (
           <ProductImage
             alt={mainImage.alt_text ?? product.name}
-            className="size-full object-cover transition duration-500 group-hover:scale-105"
+            className="size-full object-contain p-5 transition duration-500 group-hover:scale-105"
             src={mainImage.url}
           />
         ) : (
-          <div className="flex size-full items-center justify-center bg-gradient-to-br from-secondary to-background p-6 text-center font-display text-2xl font-black italic text-muted-foreground">
+          <div className="flex size-full items-center justify-center p-6 text-center font-display text-2xl font-black italic text-slate-500">
             FreeStyle
           </div>
         )}

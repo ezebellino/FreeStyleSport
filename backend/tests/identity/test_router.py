@@ -46,7 +46,12 @@ class FakeIdentityService:
             from app.core.errors import ApiError
 
             raise ApiError(409, "bootstrap_unavailable", "The first administrator already exists")
-        user = PublicUser(id=str(uuid4()), email=payload.email, role="superadmin")
+        user = PublicUser(
+            id=str(uuid4()),
+            email=payload.email,
+            role="superadmin",
+            email_confirmed=True,
+        )
         self.users[payload.email.lower()] = (user, payload.password)
         return user
 
@@ -56,9 +61,15 @@ class FakeIdentityService:
         request: Request,
         settings: Settings,
         email_sender: EmailSender,
-    ) -> None:
-        user = PublicUser(id=str(uuid4()), email=payload.email, role="customer")
+    ) -> bool:
+        user = PublicUser(
+            id=str(uuid4()),
+            email=payload.email,
+            role="customer",
+            email_confirmed=False,
+        )
         self.users[payload.email.lower()] = (user, payload.password)
+        return True
 
     async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None:
         return None
@@ -166,6 +177,7 @@ def test_login_sets_session_and_csrf_cookies() -> None:
 
     assert response.status_code == 200
     assert response.json()["role"] == "superadmin"
+    assert response.json()["email_confirmed"] is True
     assert client.cookies.get("fs_session") is not None
     assert client.cookies.get("fs_csrf") is not None
     assert "HttpOnly" in response.headers["set-cookie"]

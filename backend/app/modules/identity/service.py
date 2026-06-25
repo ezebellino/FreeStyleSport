@@ -54,7 +54,7 @@ class IdentityService(Protocol):
         request: Request,
         settings: Settings,
         email_sender: EmailSender,
-    ) -> None: ...
+    ) -> bool: ...
 
     async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None: ...
 
@@ -67,7 +67,12 @@ class IdentityService(Protocol):
 
 
 def _public_user(user: User) -> PublicUser:
-    return PublicUser(id=user.id, email=user.email, role=user.role)
+    return PublicUser(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        email_confirmed=user.email_confirmed_at is not None,
+    )
 
 
 def _expires_at_is_past(expires_at: datetime) -> bool:
@@ -142,15 +147,20 @@ class SqlAlchemyIdentityService:
         if user is None or not PasswordHasher().verify(payload.password, user.password_hash):
             raise ApiError(401, "invalid_credentials", "Email or password is incorrect")
 
-        if user.email_confirmed_at is None:
+        is_unconfirmed_customer = user.email_confirmed_at is None and user.role == "customer"
+
+        if user.email_confirmed_at is None and user.role != "customer":
             raise ApiError(
                 403,
                 "email_not_confirmed",
                 "Necesitamos que confirmes tu correo antes de entrar",
             )
 
-        if not user.is_active:
+        if not user.is_active and not is_unconfirmed_customer:
             raise ApiError(401, "invalid_credentials", "Email or password is incorrect")
+
+        if is_unconfirmed_customer and not user.is_active:
+            user.is_active = True
 
         tokens = SessionTokens.issue(timedelta(seconds=settings.session_ttl_seconds))
         self._session.add(
@@ -234,7 +244,7 @@ class SqlAlchemyIdentityService:
         request: Request,
         settings: Settings,
         email_sender: EmailSender,
-    ) -> None:
+    ) -> bool:
         email = payload.email.lower()
         existing_user = await self._session.scalar(select(User).where(User.email == email))
         if existing_user is not None:
@@ -249,26 +259,37 @@ class SqlAlchemyIdentityService:
             )
             await self._session.commit()
             if raw_token is not None:
-                await _send_confirmation_email(
-                    email_sender,
-                    settings,
-                    existing_user.email,
-                    raw_token,
-                )
-            return
+                try:
+                    await _send_confirmation_email(
+                        email_sender,
+                        settings,
+                        existing_user.email,
+                        raw_token,
+                    )
+                except ApiError as exc:
+                    if exc.code != "confirmation_email_failed":
+                        raise
+                    return False
+            return True
 
         user = User(
             email=email,
             password_hash=PasswordHasher().hash(payload.password),
             role="customer",
-            is_active=False,
+            is_active=True,
         )
         self._session.add(user)
         await self._session.flush()
         raw_token = await self._issue_confirmation(user, settings)
         await record_audit_event(self._session, request, "identity.register", user.id)
         await self._session.commit()
-        await _send_confirmation_email(email_sender, settings, user.email, raw_token)
+        try:
+            await _send_confirmation_email(email_sender, settings, user.email, raw_token)
+        except ApiError as exc:
+            if exc.code != "confirmation_email_failed":
+                raise
+            return False
+        return True
 
     async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None:
         confirmation = await self._session.scalar(

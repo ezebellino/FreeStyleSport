@@ -46,11 +46,15 @@ export default async function ProductDetailPage({
 
   return (
     <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-2 md:px-8 md:py-16">
-      <div className="aspect-[4/5] overflow-hidden rounded-3xl border bg-secondary">
+      <div className="aspect-[4/5] overflow-hidden rounded-3xl border bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]">
         {image ? (
-          <ProductImage alt={image.alt_text ?? product.name} className="size-full object-cover" src={image.url} />
+          <ProductImage
+            alt={image.alt_text ?? product.name}
+            className="size-full object-contain p-8"
+            src={image.url}
+          />
         ) : (
-          <div className="flex size-full items-center justify-center font-display text-4xl font-black italic text-muted-foreground">
+          <div className="flex size-full items-center justify-center font-display text-4xl font-black italic text-slate-500">
             FreeStyle
           </div>
         )}
