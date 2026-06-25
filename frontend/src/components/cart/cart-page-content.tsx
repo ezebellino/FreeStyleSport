@@ -81,11 +81,17 @@ export function CartPageContent() {
           <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
             Consulta guardada
           </h1>
+          <p className="w-fit rounded-2xl border bg-secondary/40 px-4 py-3 font-mono text-sm">
+            Reserva #{orderId.slice(0, 8).toUpperCase()}
+          </p>
           <p className="max-w-2xl text-muted-foreground">
             Guardamos tu consulta con el código {orderId.slice(0, 8).toUpperCase()}. El local puede revisarla desde el panel y coordinar el próximo paso.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href={`/pedido/${orderId}`}>Ver seguimiento</Link>
+          </Button>
           <Button asChild>
             <Link href="/productos">Seguir viendo productos</Link>
           </Button>

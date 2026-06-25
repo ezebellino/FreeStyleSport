@@ -17,6 +17,7 @@ from app.modules.commerce.schemas import (
 from app.modules.commerce.service import (
     create_order,
     create_product,
+    get_order_by_id,
     get_public_product_by_slug,
     list_admin_orders,
     list_admin_products,
@@ -73,6 +74,11 @@ async def order_create(
     await record_audit_event(session, request, "commerce.order_created", None)
     await session.commit()
     return order
+
+
+@router.get("/orders/{order_id}", response_model=OrderRead)
+async def order_detail(order_id: str, session: SessionDependency) -> OrderRead:
+    return await get_order_by_id(session, order_id)
 
 
 @router.get("/admin/products", response_model=list[ProductRead])

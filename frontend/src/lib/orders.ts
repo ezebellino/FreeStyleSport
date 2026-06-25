@@ -26,6 +26,7 @@ export type OrderRead = {
   subtotal: string | number
   total: string | number
   currency: string
+  created_at?: string
   items: Array<{
     id: string
     product_slug: string
@@ -48,6 +49,19 @@ export async function createStoreOrder(payload: OrderCreatePayload): Promise<Ord
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as { message?: string } | null
     throw new Error(error?.message ?? "No pudimos crear la reserva")
+  }
+
+  return response.json() as Promise<OrderRead>
+}
+
+export async function getStoreOrder(orderId: string): Promise<OrderRead> {
+  const response = await fetch(`${publicApiUrl}/commerce/orders/${orderId}`, {
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No encontramos esa reserva")
   }
 
   return response.json() as Promise<OrderRead>

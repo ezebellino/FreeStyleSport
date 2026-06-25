@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -158,6 +159,7 @@ class OrderRead(BaseModel):
     total: Decimal
     currency: str
     order_metadata: dict[str, object] = Field(default_factory=dict, serialization_alias="metadata")
+    created_at: datetime
     items: list[OrderItemRead]
 
 
