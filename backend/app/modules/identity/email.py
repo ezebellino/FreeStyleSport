@@ -18,7 +18,9 @@ class EmailSender(Protocol):
 
 
 class EmailSendError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, provider_status: int | None = None) -> None:
+        super().__init__(message)
+        self.provider_status = provider_status
 
 
 @dataclass(slots=True)
@@ -53,7 +55,10 @@ class ResendEmailSender:
                 )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            raise EmailSendError("Email provider rejected the message") from exc
+            raise EmailSendError(
+                "Email provider rejected the message",
+                provider_status=exc.response.status_code,
+            ) from exc
         except httpx.HTTPError as exc:
             raise EmailSendError("Email provider request failed") from exc
 
