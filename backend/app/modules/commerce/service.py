@@ -281,11 +281,14 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
 
 async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
     tenant = await get_or_create_default_tenant(session)
-    requested_quantities: dict[str, int] = {}
+    requested_quantities: dict[tuple[str, str | None], int] = {}
+    item_details: dict[tuple[str, str | None], tuple[str, str | None]] = {}
     for item in payload.items:
-        requested_quantities[item.product_slug] = (
-            requested_quantities.get(item.product_slug, 0) + item.quantity
-        )
+        key = (item.product_slug, item.variant_id or item.variant_label)
+        requested_quantities[key] = requested_quantities.get(key, 0) + item.quantity
+        item_details[key] = (item.variant_id or "", item.variant_label)
+
+    requested_slugs = {product_slug for product_slug, _variant_key in requested_quantities}
 
     products = await session.scalars(
         select(Product)
@@ -293,11 +296,11 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
         .where(
             Product.tenant_id == tenant.id,
             Product.status == "published",
-            Product.slug.in_(requested_quantities.keys()),
+            Product.slug.in_(requested_slugs),
         )
     )
     products_by_slug = {product.slug: product for product in products.unique().all()}
-    missing_slugs = sorted(set(requested_quantities) - set(products_by_slug))
+    missing_slugs = sorted(requested_slugs - set(products_by_slug))
     if missing_slugs:
         raise ApiError(
             404,
@@ -308,9 +311,26 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
     currency = next(iter(products_by_slug.values())).currency if products_by_slug else "ARS"
     order_items: list[OrderItem] = []
     subtotal = 0
-    for slug, quantity in requested_quantities.items():
+    for (slug, variant_key), quantity in requested_quantities.items():
         product = products_by_slug[slug]
-        unit_price = product.base_price
+        requested_variant_id, requested_variant_label = item_details[(slug, variant_key)]
+        selected_variant = next(
+            (
+                variant
+                for variant in product.variants
+                if (requested_variant_id and variant.id == requested_variant_id)
+                or (
+                    requested_variant_label
+                    and variant.label.lower() == requested_variant_label.lower()
+                )
+            ),
+            None,
+        )
+        unit_price = (
+            selected_variant.price or product.base_price
+            if selected_variant
+            else product.base_price
+        )
         line_total = unit_price * quantity
         subtotal += line_total
         order_items.append(
@@ -326,6 +346,12 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
                 attributes={
                     "category": product.category.slug if product.category else None,
                     "brand": product.brand,
+                    "variant_id": (
+                        selected_variant.id if selected_variant else requested_variant_id or None
+                    ),
+                    "variant_label": selected_variant.label
+                    if selected_variant
+                    else requested_variant_label,
                 },
             )
         )

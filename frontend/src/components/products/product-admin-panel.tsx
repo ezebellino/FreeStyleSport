@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ProductAdminForm } from "@/components/products/product-admin-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LoadingState } from "@/components/ui/loading-state"
 import { formatCartPrice } from "@/lib/cart"
 import {
   getProductAudienceLabel,
@@ -115,9 +116,9 @@ export function ProductAdminPanel() {
         ) : null}
 
         {isLoading ? (
-          <p className="mt-4 rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
-            Cargando productos...
-          </p>
+          <div className="mt-4">
+            <LoadingState label="Cargando productos..." />
+          </div>
         ) : products.length === 0 ? (
           <p className="mt-4 rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
             Todavía no hay productos cargados.

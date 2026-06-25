@@ -3,9 +3,12 @@ import type { Product } from "./products"
 export const CART_STORAGE_KEY = "freestyle.cart.v1"
 
 export type CartItem = {
+  key: string
   productId: string
   slug: string
   name: string
+  variantId?: string
+  variantLabel?: string
   price: number
   currency: string
   imageUrl?: string
@@ -22,12 +25,20 @@ export const emptyCartState: CartState = {
   items: [],
 }
 
-export function productToCartItem(product: Product): CartItem {
+export function productToCartItem(product: Product, variantId?: string): CartItem {
+  const variant = variantId
+    ? product.variants.find((productVariant) => productVariant.id === variantId)
+      ?? product.variants.find((productVariant) => productVariant.label === variantId)
+    : undefined
+  const key = variant ? `${product.slug}:${variant.id ?? variant.label}` : product.slug
   return {
+    key,
     productId: product.id,
     slug: product.slug,
-    name: product.name,
-    price: Number(product.base_price),
+    name: variant ? `${product.name} - ${variant.label}` : product.name,
+    variantId: variant?.id,
+    variantLabel: variant?.label,
+    price: Number(variant?.price ?? product.base_price),
     currency: product.currency,
     imageUrl: product.images[0]?.url,
     quantity: 1,
@@ -66,8 +77,11 @@ export function parseCart(raw: string | null): CartState {
         .filter((item) => item && typeof item.slug === "string" && typeof item.name === "string")
         .map((item) => ({
           productId: String(item.productId ?? item.slug),
+          key: String(item.key ?? item.slug),
           slug: item.slug,
           name: item.name,
+          variantId: item.variantId,
+          variantLabel: item.variantLabel,
           price: Number(item.price) || 0,
           currency: item.currency || "ARS",
           imageUrl: item.imageUrl,
@@ -89,7 +103,8 @@ export function formatCartPrice(value: number) {
 
 export function buildReservationMessage(items: CartItem[], total: number) {
   const lines = items.map(
-    (item) => `- ${item.name} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`,
+    (item) =>
+      `- ${item.name}${item.variantLabel ? ` / talle ${item.variantLabel}` : ""} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`,
   )
 
   return [

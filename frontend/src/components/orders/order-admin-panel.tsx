@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LoadingState } from "@/components/ui/loading-state"
 import { formatCartPrice } from "@/lib/cart"
 import {
   listAdminOrders,
@@ -170,9 +171,7 @@ export function OrderAdminPanel() {
       ) : null}
 
       {isLoading ? (
-        <p className="rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
-          Cargando reservas...
-        </p>
+        <LoadingState label="Cargando reservas..." />
       ) : orders.length === 0 ? (
         <p className="rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
           Todavía no hay reservas. Cuando un cliente cree una desde el carrito, va a aparecer acá.

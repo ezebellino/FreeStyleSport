@@ -95,7 +95,7 @@ export default async function ProductDetailPage({
           </div>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <AddToCartButton product={product} />
+          <AddToCartButton product={product} className="min-w-72" />
           <Button asChild variant="secondary">
             <Link href="/productos">Volver al catalogo</Link>
           </Button>
