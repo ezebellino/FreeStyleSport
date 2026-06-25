@@ -98,6 +98,16 @@ class FakeIdentityService:
             raise ApiError(401, "not_authenticated", "Authentication is required")
         return stored.user
 
+    async def csrf_token(self, raw_session_token: str | None) -> str:
+        from app.core.errors import ApiError
+
+        if raw_session_token is None:
+            raise ApiError(401, "not_authenticated", "Authentication is required")
+        stored = self.sessions.get(raw_session_token)
+        if stored is None or stored.revoked:
+            raise ApiError(401, "not_authenticated", "Authentication is required")
+        return stored.csrf_token
+
     async def logout(self, raw_session_token: str | None, request: Request) -> None:
         from app.core.errors import ApiError
 
@@ -193,6 +203,23 @@ def test_logout_requires_matching_csrf_header() -> None:
 
     assert response.status_code == 403
     assert response.json()["code"] == "csrf_failed"
+
+
+def test_csrf_returns_current_session_token() -> None:
+    client = build_client()
+    client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+    client.post(
+        "/identity/login",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    response = client.get("/identity/csrf")
+
+    assert response.status_code == 200
+    assert response.json() == {"csrf_token": client.cookies.get("fs_csrf")}
 
 
 def test_logout_revokes_session_and_clears_cookies() -> None:

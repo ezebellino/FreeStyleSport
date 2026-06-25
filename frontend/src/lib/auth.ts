@@ -41,6 +41,27 @@ export function buildCsrfHeaders(cookieHeader: string): Record<string, string> {
   return token ? { "x-csrf-token": decodeURIComponent(token) } : {}
 }
 
+const csrfStorageKey = "fs_csrf_token"
+
+async function getCsrfHeaders(): Promise<Record<string, string>> {
+  const cookieHeaders = buildCsrfHeaders(document.cookie)
+  if (cookieHeaders["x-csrf-token"]) {
+    return cookieHeaders
+  }
+
+  const storedToken = window.sessionStorage.getItem(csrfStorageKey)
+  if (storedToken) {
+    return { "x-csrf-token": storedToken }
+  }
+
+  const response = await fetch(`${publicApiUrl}/identity/csrf`, {
+    credentials: "include",
+  })
+  const payload = await parseAuthResponse<{ csrf_token: string }>(response)
+  window.sessionStorage.setItem(csrfStorageKey, payload.csrf_token)
+  return { "x-csrf-token": payload.csrf_token }
+}
+
 export async function registerCustomer(email: string, password: string): Promise<AuthMessage> {
   const response = await fetch(`${publicApiUrl}/identity/register`, {
     method: "POST",
@@ -74,11 +95,12 @@ export async function loginUser(email: string, password: string): Promise<Public
 export async function logoutUser(): Promise<void> {
   const response = await fetch(`${publicApiUrl}/identity/logout`, {
     method: "POST",
-    headers: buildCsrfHeaders(document.cookie),
+    headers: await getCsrfHeaders(),
     credentials: "include",
   })
 
   await parseAuthResponse<{ status: string }>(response)
+  window.sessionStorage.removeItem(csrfStorageKey)
 }
 
 export async function getCurrentUser(): Promise<PublicUser | null> {

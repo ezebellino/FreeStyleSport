@@ -4,6 +4,7 @@ import Link from "next/link"
 import { FormEvent, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { showError, showSuccess } from "@/lib/alerts"
 import { AuthApiError, registerCustomer } from "@/lib/auth"
 
 export default function RegisterPage() {
@@ -24,12 +25,16 @@ export default function RegisterPage() {
     try {
       const response = await registerCustomer(email, password)
       setMessage(response.message)
+      void showSuccess("Cuenta creada", response.message)
       event.currentTarget.reset()
     } catch (caught) {
       if (caught instanceof AuthApiError) {
         setError(caught.message)
+        void showError("No pudimos crear la cuenta", caught.message)
       } else {
-        setError("No pudimos crear la cuenta. Intentalo de nuevo.")
+        const message = "No pudimos crear la cuenta. Intentalo de nuevo."
+        setError(message)
+        void showError("No pudimos crear la cuenta", message)
       }
     } finally {
       setIsSubmitting(false)

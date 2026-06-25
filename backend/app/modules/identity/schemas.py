@@ -28,6 +28,10 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class CsrfResponse(BaseModel):
+    csrf_token: str
+
+
 class PublicUser(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

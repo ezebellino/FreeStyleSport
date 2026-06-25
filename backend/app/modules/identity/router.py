@@ -9,6 +9,7 @@ from app.modules.identity.email import ConsoleEmailSender, EmailSender, ResendEm
 from app.modules.identity.schemas import (
     BootstrapAdminRequest,
     ConfirmEmailRequest,
+    CsrfResponse,
     LoginRequest,
     MessageResponse,
     PublicUser,
@@ -120,6 +121,19 @@ async def me(
     settings: SettingsDependency,
 ) -> PublicUser:
     return await identity_service.current_user(request.cookies.get(settings.session_cookie_name))
+
+
+@router.get("/csrf", response_model=CsrfResponse)
+async def csrf_token(
+    request: Request,
+    identity_service: IdentityServiceDependency,
+    settings: SettingsDependency,
+) -> CsrfResponse:
+    return CsrfResponse(
+        csrf_token=await identity_service.csrf_token(
+            request.cookies.get(settings.session_cookie_name)
+        )
+    )
 
 
 @router.post("/logout")

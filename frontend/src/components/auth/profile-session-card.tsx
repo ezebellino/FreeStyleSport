@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { showError, showSuccess } from "@/lib/alerts"
 import { AuthApiError, getCurrentUser, logoutUser, type PublicUser } from "@/lib/auth"
 
 function roleLabel(role: PublicUser["role"]) {
@@ -47,13 +48,17 @@ export function ProfileSessionCard() {
     try {
       await logoutUser()
       setUser(null)
+      void showSuccess("Sesion cerrada", "Ya podes entrar con otra cuenta cuando lo necesites.")
       router.replace("/login")
       router.refresh()
     } catch (caught) {
       if (caught instanceof AuthApiError) {
         setError(caught.message)
+        void showError("No pudimos cerrar sesion", caught.message)
       } else {
-        setError("No pudimos cerrar sesion. Intentalo de nuevo.")
+        const message = "No pudimos cerrar sesion. Intentalo de nuevo."
+        setError(message)
+        void showError("No pudimos cerrar sesion", message)
       }
     } finally {
       setIsLoggingOut(false)

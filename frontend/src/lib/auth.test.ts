@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { publicApiUrl } from "./api"
-import { AuthApiError, buildCsrfHeaders, loginUser } from "./auth"
+import { AuthApiError, buildCsrfHeaders, loginUser, logoutUser } from "./auth"
 
 afterEach(() => {
   vi.restoreAllMocks()
+  window.sessionStorage.clear()
 })
 
 describe("buildCsrfHeaders", () => {
@@ -44,5 +45,27 @@ describe("auth routes", () => {
     )
 
     await expect(loginUser("admin@zeqebellino.com", "wrong")).rejects.toBeInstanceOf(AuthApiError)
+  })
+
+  it("loads csrf token from the API before logout when frontend cannot read the API cookie", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ csrf_token: "server-csrf" })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "ok" })))
+
+    await logoutUser()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `${publicApiUrl}/identity/csrf`, {
+      credentials: "include",
+    })
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `${publicApiUrl}/identity/logout`,
+      expect.objectContaining({
+        credentials: "include",
+        headers: { "x-csrf-token": "server-csrf" },
+        method: "POST",
+      })
+    )
   })
 })
