@@ -1,7 +1,12 @@
 import { publicApiUrl } from "./api"
 
 export type AuthMessage = { message: string }
-export type PublicUser = { id: string; email: string; role: "superadmin" | "admin" | "customer" | string }
+export type PublicUser = {
+  id: string
+  email: string
+  role: "superadmin" | "admin" | "customer" | string
+  email_confirmed?: boolean
+}
 
 export class AuthApiError extends Error {
   code: string

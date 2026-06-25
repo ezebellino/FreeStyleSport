@@ -135,11 +135,14 @@ export function CartPageContent() {
               key={item.slug}
               className="grid gap-4 rounded-3xl border bg-card p-4 sm:grid-cols-[7rem_1fr_auto]"
             >
-              <Link href={`/productos/${item.slug}`} className="aspect-square overflow-hidden rounded-2xl bg-secondary">
+              <Link
+                href={`/productos/${item.slug}`}
+                className="aspect-square overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]"
+              >
                 {item.imageUrl ? (
-                  <ProductImage alt={item.name} className="size-full object-cover" src={item.imageUrl} />
+                  <ProductImage alt={item.name} className="size-full object-contain p-2" src={item.imageUrl} />
                 ) : (
-                  <div className="flex size-full items-center justify-center font-display font-black italic text-muted-foreground">
+                  <div className="flex size-full items-center justify-center font-display font-black italic text-slate-500">
                     FreeStyle
                   </div>
                 )}

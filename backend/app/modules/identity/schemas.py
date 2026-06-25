@@ -38,3 +38,4 @@ class PublicUser(BaseModel):
     id: str
     email: EmailStr
     role: str
+    email_confirmed: bool

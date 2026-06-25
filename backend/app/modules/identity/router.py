@@ -87,7 +87,19 @@ async def register(
     settings: SettingsDependency,
     email_sender: EmailSenderDependency,
 ) -> MessageResponse:
-    await identity_service.register(payload, request, settings, email_sender)
+    confirmation_email_sent = await identity_service.register(
+        payload,
+        request,
+        settings,
+        email_sender,
+    )
+    if not confirmation_email_sent:
+        return MessageResponse(
+            message=(
+                "Cuenta creada. Ya podes iniciar sesion; "
+                "el correo de confirmacion queda pendiente."
+            )
+        )
     return MessageResponse(message="Te enviamos un correo para confirmar tu cuenta.")
 
 

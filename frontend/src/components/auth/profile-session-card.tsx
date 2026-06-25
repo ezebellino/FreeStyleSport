@@ -87,6 +87,12 @@ export function ProfileSessionCard() {
           </div>
           <Badge>{roleLabel(user.role)}</Badge>
         </div>
+        {user.email_confirmed === false ? (
+          <p className="mt-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+            Tu correo todavia no esta confirmado. Podes usar la cuenta igual; cuando el correo
+            llegue, confirmalo para dejarla completa.
+          </p>
+        ) : null}
         {error ? (
           <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
