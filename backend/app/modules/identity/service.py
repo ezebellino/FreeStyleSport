@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Protocol
 
@@ -23,6 +24,8 @@ from app.modules.identity.schemas import (
     ResendConfirmationRequest,
 )
 from app.modules.identity.sessions import IssuedSessionTokens, SessionTokens
+
+logger = logging.getLogger(__name__)
 
 
 class IdentityService(Protocol):
@@ -84,8 +87,16 @@ async def _send_confirmation_email(
     try:
         await email_sender.send(build_confirmation_email(email, link))
     except EmailSendError as exc:
+        logger.warning(
+            "Confirmation email failed for %s using sender %s from %s. Provider status: %s",
+            email,
+            type(email_sender).__name__,
+            settings.email_from,
+            exc.provider_status,
+            exc_info=exc,
+        )
         raise ApiError(
-            502,
+            424,
             "confirmation_email_failed",
             (
                 "Creamos la cuenta, pero no pudimos enviar el correo de confirmacion. "
