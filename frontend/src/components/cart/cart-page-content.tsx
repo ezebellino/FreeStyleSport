@@ -2,12 +2,13 @@
 
 import { ClipboardIcon, MinusIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useCart } from "@/components/cart/cart-provider"
 import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getCurrentUser } from "@/lib/auth"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
 import { createStoreOrder, type OrderCreatePayload } from "@/lib/orders"
 
@@ -38,6 +39,22 @@ export function CartPageContent() {
   const [error, setError] = useState<string | null>(null)
   const message = useMemo(() => buildReservationMessage(items, total), [items, total])
   const whatsappHref = buildWhatsAppHref(message)
+
+  useEffect(() => {
+    let isMounted = true
+
+    getCurrentUser()
+      .then((user) => {
+        if (isMounted && user?.email) {
+          setCustomerEmail((currentEmail) => currentEmail || user.email)
+        }
+      })
+      .catch(() => undefined)
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   async function copyMessage() {
     await navigator.clipboard.writeText(message)
@@ -81,11 +98,17 @@ export function CartPageContent() {
           <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
             Consulta guardada
           </h1>
+          <p className="w-fit rounded-2xl border bg-secondary/40 px-4 py-3 font-mono text-sm">
+            Reserva #{orderId.slice(0, 8).toUpperCase()}
+          </p>
           <p className="max-w-2xl text-muted-foreground">
             Guardamos tu consulta con el código {orderId.slice(0, 8).toUpperCase()}. El local puede revisarla desde el panel y coordinar el próximo paso.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href={`/pedido/${orderId}`}>Ver seguimiento</Link>
+          </Button>
           <Button asChild>
             <Link href="/productos">Seguir viendo productos</Link>
           </Button>

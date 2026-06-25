@@ -17,9 +17,11 @@ from app.modules.commerce.schemas import (
 from app.modules.commerce.service import (
     create_order,
     create_product,
+    get_order_by_id,
     get_public_product_by_slug,
     list_admin_orders,
     list_admin_products,
+    list_orders_by_customer_email,
     list_public_products,
     update_order,
     update_product,
@@ -73,6 +75,22 @@ async def order_create(
     await record_audit_event(session, request, "commerce.order_created", None)
     await session.commit()
     return order
+
+
+@router.get("/orders/{order_id}", response_model=OrderRead)
+async def order_detail(order_id: str, session: SessionDependency) -> OrderRead:
+    return await get_order_by_id(session, order_id)
+
+
+@router.get("/my/orders", response_model=list[OrderRead])
+async def my_orders(
+    request: Request,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    identity_service: IdentityServiceDependency,
+) -> list[OrderRead]:
+    user = await identity_service.current_user(request.cookies.get(settings.session_cookie_name))
+    return list(await list_orders_by_customer_email(session, user.email))
 
 
 @router.get("/admin/products", response_model=list[ProductRead])
