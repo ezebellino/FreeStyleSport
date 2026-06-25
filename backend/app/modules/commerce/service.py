@@ -365,6 +365,22 @@ async def list_admin_orders(session: AsyncSession) -> Sequence[Order]:
     return result.unique().all()
 
 
+async def list_orders_by_customer_email(
+    session: AsyncSession,
+    customer_email: str,
+) -> Sequence[Order]:
+    tenant = await get_default_tenant(session)
+    if tenant is None:
+        return []
+    result = await session.scalars(
+        select(Order)
+        .options(*_order_options())
+        .where(Order.tenant_id == tenant.id, Order.customer_email == customer_email.lower())
+        .order_by(Order.created_at.desc())
+    )
+    return result.unique().all()
+
+
 async def get_order_by_id(session: AsyncSession, order_id: str) -> Order:
     tenant = await get_default_tenant(session)
     if tenant is None:

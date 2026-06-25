@@ -67,6 +67,23 @@ export async function getStoreOrder(orderId: string): Promise<OrderRead> {
   return response.json() as Promise<OrderRead>
 }
 
+export async function listMyOrders(): Promise<OrderRead[]> {
+  const response = await fetch(`${publicApiUrl}/commerce/my/orders`, {
+    credentials: "include",
+  })
+
+  if (response.status === 401) {
+    return []
+  }
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos cargar tus reservas")
+  }
+
+  return response.json() as Promise<OrderRead[]>
+}
+
 export async function listAdminOrders(): Promise<OrderRead[]> {
   const response = await fetch(`${publicApiUrl}/commerce/admin/orders`, {
     credentials: "include",

@@ -1,4 +1,5 @@
 import { ProfileSessionCard } from "@/components/auth/profile-session-card"
+import { ProfileOrdersCard } from "@/components/orders/profile-orders-card"
 import { Badge } from "@/components/ui/badge"
 
 const profileSections = [
@@ -6,11 +7,6 @@ const profileSections = [
     title: "Datos personales",
     description: "Nombre, email y telefono de contacto para compras y soporte.",
     status: "Listo para conectar",
-  },
-  {
-    title: "Pedidos",
-    description: "Historial de compras, preparacion y seguimiento.",
-    status: "Proximamente",
   },
   {
     title: "Direcciones",
@@ -41,6 +37,8 @@ export default function ProfilePage() {
 
         <ProfileSessionCard />
       </div>
+
+      <ProfileOrdersCard />
 
       <div className="grid gap-4 md:grid-cols-2">
         {profileSections.map((section) => (
