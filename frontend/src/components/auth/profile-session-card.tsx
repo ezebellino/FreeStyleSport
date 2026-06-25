@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LoadingState } from "@/components/ui/loading-state"
 import { showError, showSuccess } from "@/lib/alerts"
 import { AuthApiError, getCurrentUser, logoutUser, type PublicUser } from "@/lib/auth"
 
@@ -69,7 +70,9 @@ export function ProfileSessionCard() {
     return (
       <div className="rounded-3xl border bg-card p-6 text-card-foreground shadow-sm">
         <p className="text-sm font-medium text-muted-foreground">Cuenta FreeStyle</p>
-        <p className="mt-4 text-xl font-semibold">Revisando tu sesion...</p>
+        <div className="mt-4">
+          <LoadingState label="Revisando tu sesion..." />
+        </div>
       </div>
     )
   }

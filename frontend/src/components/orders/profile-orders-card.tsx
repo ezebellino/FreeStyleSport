@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LoadingState } from "@/components/ui/loading-state"
 import { formatCartPrice } from "@/lib/cart"
 import { listMyOrders, type OrderRead } from "@/lib/orders"
 
@@ -70,9 +71,9 @@ export function ProfileOrdersCard() {
       </div>
 
       {isLoading ? (
-        <p className="mt-4 rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
-          Cargando tus reservas...
-        </p>
+        <div className="mt-4">
+          <LoadingState label="Cargando tus reservas..." />
+        </div>
       ) : error ? (
         <p className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           {error}

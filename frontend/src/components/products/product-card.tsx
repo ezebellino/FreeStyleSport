@@ -72,7 +72,7 @@ export function ProductCard({ product }: Readonly<{ product: Product }>) {
           ) : null}
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid gap-2">
           <Button asChild className="flex-1">
             <Link href={`/productos/${product.slug}`}>Ver producto</Link>
           </Button>

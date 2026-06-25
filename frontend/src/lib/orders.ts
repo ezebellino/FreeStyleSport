@@ -10,6 +10,8 @@ export type OrderCreatePayload = {
   items: Array<{
     product_slug: string
     quantity: number
+    variant_id?: string
+    variant_label?: string
   }>
 }
 

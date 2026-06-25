@@ -116,6 +116,8 @@ class ProductRead(BaseModel):
 class OrderItemCreate(BaseModel):
     product_slug: str = Field(min_length=1, max_length=160)
     quantity: int = Field(default=1, ge=1, le=99)
+    variant_id: str | None = Field(default=None, max_length=36)
+    variant_label: str | None = Field(default=None, max_length=160)
 
 
 class OrderCreate(BaseModel):

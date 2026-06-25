@@ -79,6 +79,8 @@ export function CartPageContent() {
         items: items.map((item) => ({
           product_slug: item.slug,
           quantity: item.quantity,
+          variant_id: item.variantId,
+          variant_label: item.variantLabel,
         })),
       })
       setOrderId(order.id)
@@ -155,7 +157,7 @@ export function CartPageContent() {
         <div className="space-y-3">
           {items.map((item) => (
             <article
-              key={item.slug}
+              key={item.key}
               className="grid gap-4 rounded-3xl border bg-card p-4 sm:grid-cols-[7rem_1fr_auto]"
             >
               <Link
@@ -176,18 +178,18 @@ export function CartPageContent() {
                 </Link>
                 <p className="text-sm text-muted-foreground">{formatCartPrice(item.price)} c/u</p>
                 <div className="flex w-fit items-center rounded-full border">
-                  <Button variant="ghost" size="icon" aria-label="Restar unidad" onClick={() => decrementItem(item.slug)}>
+                  <Button variant="ghost" size="icon" aria-label="Restar unidad" onClick={() => decrementItem(item.key)}>
                     <MinusIcon data-icon="inline-start" />
                   </Button>
                   <span className="min-w-8 text-center text-sm font-bold">{item.quantity}</span>
-                  <Button variant="ghost" size="icon" aria-label="Sumar unidad" onClick={() => incrementItem(item.slug)}>
+                  <Button variant="ghost" size="icon" aria-label="Sumar unidad" onClick={() => incrementItem(item.key)}>
                     <PlusIcon data-icon="inline-start" />
                   </Button>
                 </div>
               </div>
               <div className="flex items-start justify-between gap-3 sm:flex-col sm:items-end">
                 <p className="text-xl font-black">{formatCartPrice(item.price * item.quantity)}</p>
-                <Button variant="ghost" size="icon" aria-label="Quitar producto" onClick={() => removeItem(item.slug)}>
+                <Button variant="ghost" size="icon" aria-label="Quitar producto" onClick={() => removeItem(item.key)}>
                   <Trash2Icon data-icon="inline-start" />
                 </Button>
               </div>

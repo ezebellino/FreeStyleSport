@@ -17,10 +17,10 @@ type CartContextValue = {
   items: CartItem[]
   count: number
   total: number
-  addProduct: (product: Product) => void
-  incrementItem: (slug: string) => void
-  decrementItem: (slug: string) => void
-  removeItem: (slug: string) => void
+  addProduct: (product: Product, variantId?: string) => void
+  incrementItem: (key: string) => void
+  decrementItem: (key: string) => void
+  removeItem: (key: string) => void
   clearCart: () => void
 }
 
@@ -45,30 +45,30 @@ export function CartProvider({ children }: Readonly<{ children: React.ReactNode 
     }
   }, [hasLoaded, items])
 
-  const addProduct = useCallback((product: Product) => {
-    const nextItem = productToCartItem(product)
+  const addProduct = useCallback((product: Product, variantId?: string) => {
+    const nextItem = productToCartItem(product, variantId)
     setItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.slug === nextItem.slug)
+      const existingItem = currentItems.find((item) => item.key === nextItem.key)
       if (!existingItem) {
         return [...currentItems, nextItem]
       }
 
       return currentItems.map((item) =>
-        item.slug === nextItem.slug ? { ...item, quantity: item.quantity + 1 } : item,
+        item.key === nextItem.key ? { ...item, quantity: item.quantity + 1 } : item,
       )
     })
   }, [])
 
-  const incrementItem = useCallback((slug: string) => {
+  const incrementItem = useCallback((key: string) => {
     setItems((currentItems) =>
-      currentItems.map((item) => (item.slug === slug ? { ...item, quantity: item.quantity + 1 } : item)),
+      currentItems.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item)),
     )
   }, [])
 
-  const decrementItem = useCallback((slug: string) => {
+  const decrementItem = useCallback((key: string) => {
     setItems((currentItems) =>
       currentItems.flatMap((item) => {
-        if (item.slug !== slug) {
+        if (item.key !== key) {
           return [item]
         }
 
@@ -78,8 +78,8 @@ export function CartProvider({ children }: Readonly<{ children: React.ReactNode 
     )
   }, [])
 
-  const removeItem = useCallback((slug: string) => {
-    setItems((currentItems) => currentItems.filter((item) => item.slug !== slug))
+  const removeItem = useCallback((key: string) => {
+    setItems((currentItems) => currentItems.filter((item) => item.key !== key))
   }, [])
 
   const clearCart = useCallback(() => {
