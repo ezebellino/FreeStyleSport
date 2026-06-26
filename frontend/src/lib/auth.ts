@@ -6,6 +6,17 @@ export type PublicUser = {
   email: string
   role: "superadmin" | "admin" | "customer" | string
   email_confirmed?: boolean
+  first_name?: string | null
+  last_name?: string | null
+  phone?: string | null
+}
+
+export type RegisterCustomerPayload = {
+  email: string
+  password: string
+  firstName?: string
+  lastName?: string
+  phone?: string
 }
 
 export class AuthApiError extends Error {
@@ -67,12 +78,18 @@ async function getCsrfHeaders(): Promise<Record<string, string>> {
   return { "x-csrf-token": payload.csrf_token }
 }
 
-export async function registerCustomer(email: string, password: string): Promise<AuthMessage> {
+export async function registerCustomer(payload: RegisterCustomerPayload): Promise<AuthMessage> {
   const response = await fetch(`${publicApiUrl}/identity/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({
+      email: payload.email,
+      password: payload.password,
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+      phone: payload.phone,
+    }),
   })
   return parseAuthResponse<AuthMessage>(response)
 }

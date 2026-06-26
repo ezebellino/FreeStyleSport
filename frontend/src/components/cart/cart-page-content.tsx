@@ -176,6 +176,13 @@ export function CartPageContent() {
                 <Link href={`/productos/${item.slug}`} className="text-lg font-semibold hover:text-primary">
                   {item.name}
                 </Link>
+                {item.variantLabel ? (
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {item.variantColor ? `Color: ${item.variantColor}` : null}
+                    {item.variantColor && item.variantSize ? " · " : null}
+                    {item.variantSize ? `Talle: ${item.variantSize}` : item.variantLabel}
+                  </p>
+                ) : null}
                 <p className="text-sm text-muted-foreground">{formatCartPrice(item.price)} c/u</p>
                 <div className="flex w-fit items-center rounded-full border">
                   <Button variant="ghost" size="icon" aria-label="Restar unidad" onClick={() => decrementItem(item.key)}>

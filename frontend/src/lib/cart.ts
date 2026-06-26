@@ -9,6 +9,8 @@ export type CartItem = {
   name: string
   variantId?: string
   variantLabel?: string
+  variantColor?: string
+  variantSize?: string
   price: number
   currency: string
   imageUrl?: string
@@ -31,13 +33,19 @@ export function productToCartItem(product: Product, variantId?: string): CartIte
       ?? product.variants.find((productVariant) => productVariant.label === variantId)
     : undefined
   const key = variant ? `${product.slug}:${variant.id ?? variant.label}` : product.slug
+  const variantColor =
+    variant && typeof variant.attributes.color === "string" ? variant.attributes.color : undefined
+  const variantSize =
+    variant && typeof variant.attributes.talle === "string" ? variant.attributes.talle : undefined
   return {
     key,
     productId: product.id,
     slug: product.slug,
-    name: variant ? `${product.name} - ${variant.label}` : product.name,
+    name: product.name,
     variantId: variant?.id,
     variantLabel: variant?.label,
+    variantColor,
+    variantSize,
     price: Number(variant?.price ?? product.base_price),
     currency: product.currency,
     imageUrl: product.images[0]?.url,
@@ -82,6 +90,8 @@ export function parseCart(raw: string | null): CartState {
           name: item.name,
           variantId: item.variantId,
           variantLabel: item.variantLabel,
+          variantColor: item.variantColor,
+          variantSize: item.variantSize,
           price: Number(item.price) || 0,
           currency: item.currency || "ARS",
           imageUrl: item.imageUrl,
@@ -104,7 +114,7 @@ export function formatCartPrice(value: number) {
 export function buildReservationMessage(items: CartItem[], total: number) {
   const lines = items.map(
     (item) =>
-      `- ${item.name}${item.variantLabel ? ` / talle ${item.variantLabel}` : ""} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`,
+      `- ${item.name}${item.variantLabel ? ` / ${item.variantLabel}` : ""} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`,
   )
 
   return [

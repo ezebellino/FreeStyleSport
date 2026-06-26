@@ -16,3 +16,9 @@ def test_user_roles_are_stored_as_strings() -> None:
 
 def test_user_has_email_confirmation_timestamp() -> None:
     assert "email_confirmed_at" in User.__table__.c
+
+
+def test_user_has_customer_contact_fields() -> None:
+    assert "first_name" in User.__table__.c
+    assert "last_name" in User.__table__.c
+    assert "phone" in User.__table__.c

@@ -18,6 +18,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(String(32), default="customer")
+    first_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
     email_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

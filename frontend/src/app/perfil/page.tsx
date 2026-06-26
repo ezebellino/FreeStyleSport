@@ -6,7 +6,7 @@ const profileSections = [
   {
     title: "Datos personales",
     description: "Nombre, email y telefono de contacto para compras y soporte.",
-    status: "Listo para conectar",
+    status: "Activo",
   },
   {
     title: "Direcciones",
