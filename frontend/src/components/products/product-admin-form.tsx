@@ -63,10 +63,26 @@ function displayVariantLabel(variant: VariantDraft, fallback: string) {
   return color ? `${color} / ${size}` : size
 }
 
+function splitBulkValues(value: string) {
+  return value
+    .split(/[\n,;]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+function skuPart(value: string) {
+  return slugify(value).toUpperCase()
+}
+
 export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<ProductAdminFormProps>) {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [bulkColors, setBulkColors] = useState("")
+  const [bulkSizes, setBulkSizes] = useState("")
+  const [bulkStock, setBulkStock] = useState(0)
+  const [bulkPrice, setBulkPrice] = useState("")
+  const [bulkSkuBase, setBulkSkuBase] = useState("")
   const [variants, setVariants] = useState<VariantDraft[]>(
     product?.variants.length ? product.variants.map(variantToDraft) : [emptyVariantDraft()],
   )
@@ -93,6 +109,61 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         ? currentVariants.filter((_, variantIndex) => variantIndex !== index)
         : currentVariants,
     )
+  }
+
+  function generateVariantCombinations() {
+    setMessage(null)
+    setError(null)
+
+    const colors = splitBulkValues(bulkColors)
+    const sizes = splitBulkValues(bulkSizes)
+    const stock = Math.max(0, Number(bulkStock) || 0)
+    const skuBase = bulkSkuBase.trim()
+
+    if (!colors.length || !sizes.length) {
+      setError("Agrega al menos un color y un talle para generar variantes.")
+      return
+    }
+
+    const generatedVariants = colors.flatMap((color) =>
+      sizes.map((size) => ({
+        label: size,
+        color,
+        stock,
+        price: bulkPrice,
+        sku: skuBase ? `${skuBase}-${skuPart(color)}-${skuPart(size)}` : "",
+      })),
+    )
+
+    setVariants((currentVariants) => {
+      const shouldReplaceDefault =
+        currentVariants.length === 1 &&
+        !currentVariants[0].color.trim() &&
+        currentVariants[0].stock === 0 &&
+        !currentVariants[0].sku.trim() &&
+        !currentVariants[0].price.trim()
+
+      const baseVariants = shouldReplaceDefault ? [] : currentVariants
+      const existingKeys = new Set(
+        baseVariants.map((variant) => `${variant.color.trim().toLowerCase()}|${variant.label.trim().toLowerCase()}`),
+      )
+      const uniqueGeneratedVariants = generatedVariants.filter((variant) => {
+        const key = `${variant.color.trim().toLowerCase()}|${variant.label.trim().toLowerCase()}`
+        if (existingKeys.has(key)) {
+          return false
+        }
+        existingKeys.add(key)
+        return true
+      })
+
+      if (!uniqueGeneratedVariants.length) {
+        setMessage("Esas combinaciones ya estaban cargadas.")
+        return currentVariants
+      }
+
+      setMessage(`${uniqueGeneratedVariants.length} variantes agregadas. Revisalas y guardá el producto.`)
+      return [...baseVariants, ...uniqueGeneratedVariants]
+    })
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -290,6 +361,70 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
           <Button type="button" variant="secondary" onClick={addVariant}>
             Agregar variante
           </Button>
+        </div>
+        <div className="grid gap-3 rounded-2xl border bg-background/50 p-4">
+          <div>
+            <h5 className="font-semibold">Generar variantes rápido</h5>
+            <p className="text-sm text-muted-foreground">
+              Cargá colores y talles una sola vez. El sistema crea todas las combinaciones para que puedas ajustar stock,
+              SKU o precio antes de guardar.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground">Colores</span>
+              <textarea
+                className="min-h-20 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                value={bulkColors}
+                onChange={(event) => setBulkColors(event.target.value)}
+                placeholder="Verde, Negro"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground">Talles o números</span>
+              <textarea
+                className="min-h-20 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                value={bulkSizes}
+                onChange={(event) => setBulkSizes(event.target.value)}
+                placeholder="39, 40, 41"
+              />
+            </label>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[0.8fr_0.8fr_1fr_auto]">
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground">Stock por combinación</span>
+              <input
+                className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                min="0"
+                type="number"
+                value={bulkStock}
+                onChange={(event) => setBulkStock(Number(event.target.value))}
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground">Precio propio</span>
+              <input
+                className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                min="0"
+                type="number"
+                value={bulkPrice}
+                onChange={(event) => setBulkPrice(event.target.value)}
+                placeholder="opcional"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground">SKU base</span>
+              <input
+                className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                value={bulkSkuBase}
+                onChange={(event) => setBulkSkuBase(event.target.value)}
+                placeholder="NIKE-SB"
+              />
+            </label>
+            <Button className="self-end" type="button" variant="secondary" onClick={generateVariantCombinations}>
+              Generar combinaciones
+            </Button>
+          </div>
         </div>
         <div className="grid gap-3">
           {variants.map((variant, index) => (
