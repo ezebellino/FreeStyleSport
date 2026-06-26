@@ -1,9 +1,16 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { CartProvider } from "@/components/cart/cart-provider"
 
 import { StoreHeader } from "./store-header"
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+    replace: vi.fn(),
+  }),
+}))
 
 afterEach(() => {
   window.localStorage.clear()
@@ -19,7 +26,7 @@ function renderStoreHeader() {
 }
 
 describe("StoreHeader", () => {
-  it("exposes mobile-first navigation and icon labels", async () => {
+  it("exposes mobile-first navigation, account actions and icon labels", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 401 }))
     window.localStorage.setItem(
       "freestyle.cart.v1",
@@ -34,24 +41,30 @@ describe("StoreHeader", () => {
     expect(screen.getByRole("link", { name: /freestyle/i })).toHaveAttribute("href", "/")
     expect(screen.getByRole("button", { name: /abrir menú/i })).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /buscar/i })).toHaveAttribute("href", "/buscar")
-    expect(screen.getByRole("link", { name: /perfil/i })).toHaveAttribute("href", "/perfil")
+
+    fireEvent.click(screen.getByRole("button", { name: /cuenta/i }))
+    expect(screen.getByRole("menuitem", { name: /iniciar sesion/i })).toHaveAttribute("href", "/login")
+    expect(screen.getByRole("menuitem", { name: /crear cuenta/i })).toHaveAttribute("href", "/registro")
+
     expect(await screen.findByRole("link", { name: /carrito, 2 productos/i })).toHaveAttribute(
       "href",
-      "/carrito"
+      "/carrito",
     )
   })
 
-  it("shows staff access when the session persists", async () => {
+  it("shows staff account menu when the session persists", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ id: "1", email: "admin@zeqebellino.com", role: "superadmin" }))
+      new Response(JSON.stringify({ id: "1", email: "admin@zeqebellino.com", role: "superadmin" })),
     )
 
     renderStoreHeader()
 
     expect(await screen.findByRole("link", { name: /panel/i })).toHaveAttribute("href", "/admin")
-    expect(screen.getByRole("link", { name: /perfil, admin@zeqebellino.com/i })).toHaveAttribute(
-      "href",
-      "/perfil"
-    )
+    fireEvent.click(screen.getByRole("button", { name: /cuenta, admin@zeqebellino.com/i }))
+
+    expect(screen.getByRole("menuitem", { name: /mi perfil/i })).toHaveAttribute("href", "/perfil")
+    expect(screen.getByRole("menuitem", { name: /historial de compras/i })).toHaveAttribute("href", "/perfil#pedidos")
+    expect(screen.getByRole("menuitem", { name: /panel administrador/i })).toHaveAttribute("href", "/admin")
+    expect(screen.getByRole("menuitem", { name: /cerrar sesion/i })).toBeInTheDocument()
   })
 })

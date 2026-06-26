@@ -57,7 +57,7 @@ export function ProfileOrdersCard() {
   }, [])
 
   return (
-    <article className="rounded-2xl border bg-card p-6 text-card-foreground shadow-sm md:col-span-2">
+    <article id="pedidos" className="rounded-2xl border bg-card p-6 text-card-foreground shadow-sm md:col-span-2">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Pedidos y reservas</h2>

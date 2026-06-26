@@ -1,6 +1,6 @@
 "use client"
 
-import { RefreshCwIcon } from "lucide-react"
+import { MessageCircleIcon, RefreshCwIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -56,6 +56,62 @@ function paymentStatusLabel(value: string) {
 
 function orderCode(orderId: string) {
   return orderId.slice(0, 8).toUpperCase()
+}
+
+function orderDateLabel(createdAt?: string) {
+  if (!createdAt) return "Fecha no disponible"
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(createdAt))
+}
+
+function variantLabel(item: OrderRead["items"][number]) {
+  const label = item.attributes?.variant_label
+  return typeof label === "string" && label.trim() ? label : null
+}
+
+function normalizePhoneForWhatsApp(phone: string) {
+  const digits = phone.replace(/\D/g, "").replace(/^0+/, "")
+  if (!digits) return null
+  if (digits.startsWith("54")) return digits
+  return `54${digits}`
+}
+
+function buildWhatsAppHref(order: OrderRead) {
+  if (!order.customer_phone) return null
+  const phone = normalizePhoneForWhatsApp(order.customer_phone)
+  if (!phone) return null
+
+  const itemLines = order.items
+    .map((item) => {
+      const variant = variantLabel(item)
+      return `- ${item.quantity} x ${item.product_name}${variant ? ` (${variant})` : ""}`
+    })
+    .join("\n")
+  const message = [
+    `Hola ${order.customer_name || ""}, te escribimos por tu pedido #${orderCode(order.id)} de FreeStyle.`,
+    "",
+    itemLines,
+    "",
+    `Total: ${formatCartPrice(Number(order.total))}`,
+    `Estado: ${statusLabel(order.status)} / ${paymentStatusLabel(order.payment_status)}`,
+  ].join("\n")
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+}
+
+function nextActionLabel(order: OrderRead) {
+  if (order.status === "cancelled") return "Pedido cancelado"
+  if (order.status === "delivered") return "Venta entregada"
+  if (order.payment_status !== "paid") return "Confirmar cobro antes de preparar"
+  if (order.status === "pending") return "Confirmar reserva"
+  if (order.status === "confirmed") return "Preparar pedido"
+  if (order.status === "preparing") return "Marcar como listo"
+  if (order.status === "ready") return "Entregar o retirar"
+  return "Revisar pedido"
 }
 
 function canAdvanceToStatus(order: OrderRead, status: string) {
@@ -178,7 +234,10 @@ export function OrderAdminPanel() {
         </p>
       ) : (
         <div className="grid gap-3">
-          {orders.map((order) => (
+          {orders.map((order) => {
+            const whatsappHref = buildWhatsAppHref(order)
+
+            return (
             <article key={order.id} className="rounded-2xl border bg-background/40 p-4">
               <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
                 <div className="space-y-3">
@@ -189,12 +248,24 @@ export function OrderAdminPanel() {
                       {paymentStatusLabel(order.payment_status)}
                     </Badge>
                     <span className="text-sm font-semibold">{formatCartPrice(Number(order.total))}</span>
+                    <span className="text-xs text-muted-foreground">{orderDateLabel(order.created_at)}</span>
                   </div>
                   <div>
                     <p className="font-semibold">{order.customer_name || "Cliente sin nombre"}</p>
                     <p className="text-sm text-muted-foreground">
                       {[order.customer_phone, order.customer_email].filter(Boolean).join(" · ") || "Sin contacto informado"}
                     </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{nextActionLabel(order)}</Badge>
+                    {whatsappHref ? (
+                      <Button asChild size="sm" variant="secondary">
+                        <a href={whatsappHref} target="_blank" rel="noreferrer">
+                          <MessageCircleIcon data-icon="inline-start" />
+                          Contactar por WhatsApp
+                        </a>
+                      </Button>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="rounded-full border px-2 py-1">
@@ -264,13 +335,17 @@ export function OrderAdminPanel() {
                       <p className="text-muted-foreground">
                         {item.quantity} x {formatCartPrice(Number(item.unit_price))}
                       </p>
+                      {variantLabel(item) ? (
+                        <p className="text-xs text-muted-foreground">Variante: {variantLabel(item)}</p>
+                      ) : null}
                     </div>
                     <p className="font-black">{formatCartPrice(Number(item.line_total))}</p>
                   </div>
                 ))}
               </div>
             </article>
-          ))}
+            )
+          })}
         </div>
       )}
     </section>
