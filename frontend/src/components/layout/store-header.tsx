@@ -1,8 +1,9 @@
 ﻿"use client"
 
-import { MenuIcon, SearchIcon, ShoppingBagIcon, UserRoundIcon } from "lucide-react"
+import { LogOutIcon, MenuIcon, SearchIcon, ShoppingBagIcon, UserRoundIcon } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 import { useCart } from "@/components/cart/cart-provider"
@@ -10,7 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { getCurrentUser, type PublicUser } from "@/lib/auth"
+import { showError, showSuccess } from "@/lib/alerts"
+import { AuthApiError, getCurrentUser, logoutUser, type PublicUser } from "@/lib/auth"
 
 const navItems = [
   ["Hombre", "/productos?linea=hombre"],
@@ -40,8 +42,15 @@ function IconLink({
   )
 }
 
+function userDisplayName(user: PublicUser) {
+  return [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email
+}
+
 export function StoreHeader() {
+  const router = useRouter()
   const [user, setUser] = useState<PublicUser | null>(null)
+  const [isAccountOpen, setIsAccountOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { count: cartCount } = useCart()
 
   useEffect(() => {
@@ -68,6 +77,26 @@ export function StoreHeader() {
   }, [])
 
   const isStaff = user?.role === "admin" || user?.role === "superadmin"
+
+  async function handleLogout() {
+    setIsLoggingOut(true)
+    try {
+      await logoutUser()
+      setUser(null)
+      setIsAccountOpen(false)
+      void showSuccess("Sesion cerrada", "Ya podes entrar con otra cuenta cuando lo necesites.")
+      router.replace("/login")
+      router.refresh()
+    } catch (caught) {
+      const message =
+        caught instanceof AuthApiError
+          ? caught.message
+          : "No pudimos cerrar sesion. Intentalo de nuevo."
+      void showError("No pudimos cerrar sesion", message)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
 
   return (
     <TooltipProvider>
@@ -120,13 +149,83 @@ export function StoreHeader() {
               <SearchIcon data-icon="inline-start" />
             </IconLink>
             <div className="relative">
-              <IconLink href="/perfil" label={user ? `Perfil, ${user.email}` : "Perfil"}>
-                <UserRoundIcon data-icon="inline-start" />
-              </IconLink>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={user ? `Cuenta, ${userDisplayName(user)}` : "Cuenta"}
+                    aria-expanded={isAccountOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setIsAccountOpen((current) => !current)}
+                  >
+                    <UserRoundIcon data-icon="inline-start" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{user ? "Mi cuenta" : "Entrar o crear cuenta"}</TooltipContent>
+              </Tooltip>
               {user ? (
                 <Badge className="pointer-events-none absolute -right-1 -top-1">
                   {user.role === "superadmin" ? "S" : user.role === "admin" ? "A" : "C"}
                 </Badge>
+              ) : null}
+              {isAccountOpen ? (
+                <div
+                  className="absolute right-0 top-11 z-50 w-64 rounded-2xl border bg-card p-2 text-card-foreground shadow-xl"
+                  role="menu"
+                >
+                  {user ? (
+                    <>
+                      <div className="border-b px-3 py-2">
+                        <p className="text-sm font-semibold">{userDisplayName(user)}</p>
+                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                      <Button className="mt-2 w-full justify-start" variant="ghost" asChild>
+                        <Link href="/perfil" role="menuitem" onClick={() => setIsAccountOpen(false)}>
+                          Mi perfil
+                        </Link>
+                      </Button>
+                      <Button className="w-full justify-start" variant="ghost" asChild>
+                        <Link href="/perfil#pedidos" role="menuitem" onClick={() => setIsAccountOpen(false)}>
+                          Historial de compras
+                        </Link>
+                      </Button>
+                      {isStaff ? (
+                        <Button className="w-full justify-start" variant="ghost" asChild>
+                          <Link href="/admin" role="menuitem" onClick={() => setIsAccountOpen(false)}>
+                            Panel administrador
+                          </Link>
+                        </Button>
+                      ) : null}
+                      <Button
+                        className="mt-2 w-full justify-start"
+                        variant="destructive"
+                        role="menuitem"
+                        onClick={() => void handleLogout()}
+                        disabled={isLoggingOut}
+                      >
+                        <LogOutIcon data-icon="inline-start" />
+                        {isLoggingOut ? "Cerrando..." : "Cerrar sesion"}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="px-3 py-2 text-sm text-muted-foreground">
+                        Entra para ver tus pedidos y comprar mas rapido.
+                      </p>
+                      <Button className="w-full justify-start" variant="ghost" asChild>
+                        <Link href="/login" role="menuitem" onClick={() => setIsAccountOpen(false)}>
+                          Iniciar sesion
+                        </Link>
+                      </Button>
+                      <Button className="w-full justify-start" variant="secondary" asChild>
+                        <Link href="/registro" role="menuitem" onClick={() => setIsAccountOpen(false)}>
+                          Crear cuenta
+                        </Link>
+                      </Button>
+                    </>
+                  )}
+                </div>
               ) : null}
             </div>
             <div className="relative">

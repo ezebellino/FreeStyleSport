@@ -8,7 +8,7 @@ import { useCart } from "@/components/cart/cart-provider"
 import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser, type PublicUser } from "@/lib/auth"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
 import { createStoreOrder, type OrderCreatePayload } from "@/lib/orders"
 
@@ -21,6 +21,10 @@ function buildWhatsAppHref(message: string) {
 
   const normalizedNumber = whatsappNumber.replace(/\D/g, "")
   return `https://wa.me/${normalizedNumber}?text=${encodeURIComponent(message)}`
+}
+
+function userDisplayName(user: PublicUser) {
+  return [user.first_name, user.last_name].filter(Boolean).join(" ").trim()
 }
 
 export function CartPageContent() {
@@ -45,7 +49,10 @@ export function CartPageContent() {
 
     getCurrentUser()
       .then((user) => {
-        if (isMounted && user?.email) {
+        if (isMounted && user) {
+          const displayName = userDisplayName(user)
+          setCustomerName((currentName) => currentName || displayName)
+          setCustomerPhone((currentPhone) => currentPhone || user.phone || "")
           setCustomerEmail((currentEmail) => currentEmail || user.email)
         }
       })
