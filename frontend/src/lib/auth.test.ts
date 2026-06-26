@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { publicApiUrl } from "./api"
-import { AuthApiError, buildCsrfHeaders, loginUser, logoutUser } from "./auth"
+import { AuthApiError, buildCsrfHeaders, loginUser, logoutUser, registerCustomer } from "./auth"
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -45,6 +45,35 @@ describe("auth routes", () => {
     )
 
     await expect(loginUser("admin@zeqebellino.com", "wrong")).rejects.toBeInstanceOf(AuthApiError)
+  })
+
+  it("registers customer contact data", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ message: "Cuenta creada" }), { status: 201 })
+    )
+
+    await registerCustomer({
+      email: "buyer@example.com",
+      password: "correct horse battery",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      phone: "2494000000",
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${publicApiUrl}/identity/register`,
+      expect.objectContaining({
+        body: JSON.stringify({
+          email: "buyer@example.com",
+          password: "correct horse battery",
+          first_name: "Ada",
+          last_name: "Lovelace",
+          phone: "2494000000",
+        }),
+        credentials: "include",
+        method: "POST",
+      })
+    )
   })
 
   it("loads csrf token from the API before logout when frontend cannot read the API cookie", async () => {

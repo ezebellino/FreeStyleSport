@@ -67,6 +67,9 @@ class FakeIdentityService:
             email=payload.email,
             role="customer",
             email_confirmed=False,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            phone=payload.phone,
         )
         self.users[payload.email.lower()] = (user, payload.password)
         return True
@@ -260,7 +263,13 @@ def test_register_returns_plain_confirmation_message() -> None:
 
     response = client.post(
         "/identity/register",
-        json={"email": "buyer@example.com", "password": "correct horse battery"},
+        json={
+            "email": "buyer@example.com",
+            "password": "correct horse battery",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "phone": "2494000000",
+        },
     )
 
     assert response.status_code == 201

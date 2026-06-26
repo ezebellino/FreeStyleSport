@@ -16,6 +16,11 @@ function roleLabel(role: PublicUser["role"]) {
   return "Cliente"
 }
 
+function userDisplayName(user: PublicUser) {
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim()
+  return fullName || user.email
+}
+
 export function ProfileSessionCard() {
   const router = useRouter()
   const [user, setUser] = useState<PublicUser | null>(null)
@@ -83,7 +88,11 @@ export function ProfileSessionCard() {
         <p className="text-sm font-medium text-muted-foreground">Cuenta FreeStyle</p>
         <div className="mt-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-xl font-semibold">{user.email}</p>
+            <p className="text-xl font-semibold">{userDisplayName(user)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+            {user.phone ? (
+              <p className="mt-1 text-sm text-muted-foreground">WhatsApp: {user.phone}</p>
+            ) : null}
             <p className="mt-1 text-sm text-muted-foreground">
               Ya estas conectado. Desde aca podes seguir compras y administrar tu cuenta.
             </p>

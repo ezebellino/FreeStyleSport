@@ -72,6 +72,9 @@ def _public_user(user: User) -> PublicUser:
         email=user.email,
         role=user.role,
         email_confirmed=user.email_confirmed_at is not None,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        phone=user.phone,
     )
 
 
@@ -250,6 +253,12 @@ class SqlAlchemyIdentityService:
         if existing_user is not None:
             raw_token = None
             if existing_user.email_confirmed_at is None:
+                if payload.first_name:
+                    existing_user.first_name = payload.first_name.strip()
+                if payload.last_name:
+                    existing_user.last_name = payload.last_name.strip()
+                if payload.phone:
+                    existing_user.phone = payload.phone.strip()
                 raw_token = await self._issue_confirmation(existing_user, settings)
             await record_audit_event(
                 self._session,
@@ -276,6 +285,9 @@ class SqlAlchemyIdentityService:
             email=email,
             password_hash=PasswordHasher().hash(payload.password),
             role="customer",
+            first_name=payload.first_name.strip() if payload.first_name else None,
+            last_name=payload.last_name.strip() if payload.last_name else None,
+            phone=payload.phone.strip() if payload.phone else None,
             is_active=True,
         )
         self._session.add(user)
