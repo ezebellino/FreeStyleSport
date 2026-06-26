@@ -39,7 +39,7 @@ type VariantDraft = {
 
 function variantToDraft(variant: ProductVariant): VariantDraft {
   return {
-    label: variant.label,
+    label: typeof variant.attributes.talle === "string" ? variant.attributes.talle : variant.label,
     stock: variant.stock_quantity,
     sku: variant.sku ?? "",
     price: variant.price ? String(variant.price) : "",
@@ -55,6 +55,12 @@ function emptyVariantDraft(): VariantDraft {
     price: "",
     color: "",
   }
+}
+
+function displayVariantLabel(variant: VariantDraft, fallback: string) {
+  const size = variant.label.trim() || fallback
+  const color = variant.color.trim()
+  return color ? `${color} / ${size}` : size
 }
 
 export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<ProductAdminFormProps>) {
@@ -107,7 +113,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
     const normalizedVariants = variants
       .map((variant, index) => ({
         sku: variant.sku.trim() || undefined,
-        label: variant.label.trim() || `Variante ${index + 1}`,
+        label: displayVariantLabel(variant, `Variante ${index + 1}`),
         price: variant.price ? Number(variant.price) : undefined,
         stock_quantity: Math.max(0, Number(variant.stock) || 0),
         attributes: {
