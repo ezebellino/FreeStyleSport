@@ -7,7 +7,8 @@ export function ProductImage({
   className,
   src,
 }: Readonly<{ alt: string; className?: string; src?: string }>) {
-  const [hasError, setHasError] = useState(false)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const hasError = Boolean(src && failedSrc === src)
 
   if (!src || hasError) {
     return (
@@ -19,6 +20,6 @@ export function ProductImage({
 
   return (
     // eslint-disable-next-line @next/next/no-img-element -- product image URLs can come from Cloudinary or another CDN during catalog setup.
-    <img alt={alt} className={className} loading="lazy" onError={() => setHasError(true)} src={src} />
+    <img alt={alt} className={className} loading="lazy" onError={() => setFailedSrc(src ?? null)} src={src} />
   )
 }

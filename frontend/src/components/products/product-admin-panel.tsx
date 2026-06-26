@@ -1,7 +1,7 @@
 "use client"
 
 import { Edit3Icon, RefreshCwIcon } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { ProductAdminForm } from "@/components/products/product-admin-form"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +13,8 @@ import {
   getProductCategoryLabel,
   listAdminProducts,
   type Product,
+  type ProductPayload,
+  updateAdminProduct,
 } from "@/lib/products"
 
 export function ProductAdminPanel() {
@@ -20,7 +22,9 @@ export function ProductAdminPanel() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [updatingProductId, setUpdatingProductId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const publishedCount = useMemo(
     () => products.filter((product) => product.status === "published").length,
@@ -79,6 +83,33 @@ export function ProductAdminPanel() {
     setSelectedProduct(savedProduct)
   }
 
+  function selectProduct(product: Product | null) {
+    setSelectedProduct(product)
+    window.setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 0)
+  }
+
+  async function changeProductStatus(product: Product, status: ProductPayload["status"]) {
+    setUpdatingProductId(product.id)
+    setError(null)
+    try {
+      const updatedProduct = await updateAdminProduct(product.id, { status })
+      setProducts((currentProducts) =>
+        currentProducts.map((currentProduct) =>
+          currentProduct.id === updatedProduct.id ? updatedProduct : currentProduct,
+        ),
+      )
+      setSelectedProduct((currentProduct) =>
+        currentProduct?.id === updatedProduct.id ? updatedProduct : currentProduct,
+      )
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No pudimos actualizar el producto")
+    } finally {
+      setUpdatingProductId(null)
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div className="rounded-3xl border bg-card p-6">
@@ -94,7 +125,7 @@ export function ProductAdminPanel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" onClick={() => setSelectedProduct(null)}>
+            <Button type="button" variant="secondary" onClick={() => selectProduct(null)}>
               Nuevo producto
             </Button>
             <Button
@@ -142,6 +173,7 @@ export function ProductAdminPanel() {
                       <Badge variant={product.status === "published" ? "default" : "secondary"}>
                         {product.status}
                       </Badge>
+                      {selectedProduct?.id === product.id ? <Badge variant="outline">Editando</Badge> : null}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {[getProductAudienceLabel(product), getProductCategoryLabel(product)]
@@ -165,10 +197,31 @@ export function ProductAdminPanel() {
                       </p>
                     ) : null}
                   </div>
-                  <Button type="button" onClick={() => setSelectedProduct(product)}>
-                    <Edit3Icon data-icon="inline-start" />
-                    Editar
-                  </Button>
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    <Button type="button" onClick={() => selectProduct(product)}>
+                      <Edit3Icon data-icon="inline-start" />
+                      Editar
+                    </Button>
+                    {product.status === "published" ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={updatingProductId === product.id}
+                        onClick={() => void changeProductStatus(product, "paused")}
+                      >
+                        Pausar
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={updatingProductId === product.id}
+                        onClick={() => void changeProductStatus(product, "published")}
+                      >
+                        Publicar
+                      </Button>
+                    )}
+                  </div>
                 </article>
               )
             })}
@@ -176,12 +229,14 @@ export function ProductAdminPanel() {
         )}
       </div>
 
-      <ProductAdminForm
-        key={selectedProduct?.id ?? "new"}
-        product={selectedProduct}
-        onCancel={selectedProduct ? () => setSelectedProduct(null) : undefined}
-        onSaved={handleSaved}
-      />
+      <div ref={formRef}>
+        <ProductAdminForm
+          key={selectedProduct?.id ?? "new"}
+          product={selectedProduct}
+          onCancel={selectedProduct ? () => setSelectedProduct(null) : undefined}
+          onSaved={handleSaved}
+        />
+      </div>
     </section>
   )
 }
