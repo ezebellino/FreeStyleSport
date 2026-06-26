@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react"
 
+import { ProductImage } from "@/components/products/product-image"
 import { Button } from "@/components/ui/button"
 import {
   createAdminProduct,
@@ -83,6 +84,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
   const [bulkStock, setBulkStock] = useState(0)
   const [bulkPrice, setBulkPrice] = useState("")
   const [bulkSkuBase, setBulkSkuBase] = useState("")
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(product?.images[0]?.url ?? "")
   const [variants, setVariants] = useState<VariantDraft[]>(
     product?.variants.length ? product.variants.map(variantToDraft) : [emptyVariantDraft()],
   )
@@ -222,6 +224,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
       if (!product) {
         event.currentTarget.reset()
         setVariants([emptyVariantDraft()])
+        setImagePreviewUrl("")
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No pudimos guardar los cambios")
@@ -338,10 +341,28 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
           className="h-11 w-full rounded-lg border bg-background px-3 text-sm"
           defaultValue={mainImage?.url ?? ""}
           name="imageUrl"
+          onChange={(event) => setImagePreviewUrl(event.target.value)}
           placeholder="https://res.cloudinary.com/..."
           type="url"
         />
       </label>
+      <div className="grid gap-3 rounded-2xl border bg-background/50 p-4 md:col-span-2 md:grid-cols-[12rem_1fr]">
+        <div className="aspect-square overflow-hidden rounded-2xl border bg-white">
+          <ProductImage
+            alt={product?.name ?? "Vista previa del producto"}
+            className="size-full object-contain p-2"
+            src={imagePreviewUrl}
+          />
+        </div>
+        <div className="self-center">
+          <p className="text-sm font-semibold">Vista previa</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Si la imagen no carga, la tienda muestra un fondo FreeStyle para evitar una card rota.
+            Cuando integremos subida directa, este espacio va a servir para revisar el archivo antes
+            de publicarlo.
+          </p>
+        </div>
+      </div>
       <label className="space-y-2 md:col-span-2">
         <span className="text-sm font-medium">Descripcion</span>
         <textarea

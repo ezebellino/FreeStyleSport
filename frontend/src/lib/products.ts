@@ -242,7 +242,7 @@ export async function listAdminProducts(): Promise<Product[]> {
   return response.json() as Promise<Product[]>
 }
 
-export async function updateAdminProduct(productId: string, payload: ProductPayload): Promise<Product> {
+export async function updateAdminProduct(productId: string, payload: Partial<ProductPayload>): Promise<Product> {
   const response = await fetch(`${publicApiUrl}/commerce/admin/products/${productId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
