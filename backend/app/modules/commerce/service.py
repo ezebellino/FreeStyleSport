@@ -326,6 +326,18 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
             ),
             None,
         )
+        if (requested_variant_id or requested_variant_label) and selected_variant is None:
+            raise ApiError(
+                409,
+                "order_variant_unavailable",
+                f"No encontramos la variante seleccionada para {product.name}",
+            )
+        if selected_variant is not None and selected_variant.stock_quantity < quantity:
+            raise ApiError(
+                409,
+                "order_variant_out_of_stock",
+                f"No hay stock suficiente para {product.name} - {selected_variant.label}",
+            )
         unit_price = (
             selected_variant.price or product.base_price
             if selected_variant
