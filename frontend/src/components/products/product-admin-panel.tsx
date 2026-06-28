@@ -17,6 +17,56 @@ import {
   updateAdminProduct,
 } from "@/lib/products"
 
+type ProductVariant = Product["variants"][number]
+
+function variantAttribute(variant: ProductVariant, keys: string[]) {
+  for (const key of keys) {
+    const value = variant.attributes[key]
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
+function variantColor(variant: ProductVariant) {
+  return variantAttribute(variant, ["color", "colour", "color_nombre"]) ?? "Color unico"
+}
+
+function variantSize(variant: ProductVariant) {
+  return variantAttribute(variant, ["talle", "numero", "size", "medida"]) ?? variant.label
+}
+
+function productStock(product: Product) {
+  return product.variants.reduce((total, variant) => total + variant.stock_quantity, 0)
+}
+
+function variantGroups(product: Product) {
+  const groups = new Map<
+    string,
+    {
+      color: string
+      totalStock: number
+      variants: Array<{ key: string; size: string; stock: number }>
+    }
+  >()
+
+  for (const variant of product.variants) {
+    const color = variantColor(variant)
+    const group = groups.get(color) ?? { color, totalStock: 0, variants: [] }
+    group.totalStock += variant.stock_quantity
+    group.variants.push({
+      key: variant.id ?? `${color}-${variant.label}`,
+      size: variantSize(variant),
+      stock: variant.stock_quantity,
+    })
+    groups.set(color, group)
+  }
+
+  return Array.from(groups.values())
+}
+
 export function ProductAdminPanel() {
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -28,6 +78,14 @@ export function ProductAdminPanel() {
 
   const publishedCount = useMemo(
     () => products.filter((product) => product.status === "published").length,
+    [products],
+  )
+  const lowStockCount = useMemo(
+    () =>
+      products.filter((product) => {
+        const stock = productStock(product)
+        return stock > 0 && stock <= 2
+      }).length,
     [products],
   )
 
@@ -119,6 +177,7 @@ export function ProductAdminPanel() {
               <h2 className="text-2xl font-black">Productos</h2>
               <Badge variant="secondary">{products.length} cargados</Badge>
               <Badge>{publishedCount} publicados</Badge>
+              {lowStockCount > 0 ? <Badge variant="destructive">{lowStockCount} bajo stock</Badge> : null}
             </div>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Editá precio, stock, imagen, descripción, categoría, línea y estado de publicación.
@@ -157,11 +216,8 @@ export function ProductAdminPanel() {
         ) : (
           <div className="mt-4 grid gap-3">
             {products.map((product) => {
-              const stock = product.variants.reduce(
-                (total, variant) => total + variant.stock_quantity,
-                0,
-              )
-              const variantLabels = product.variants.map((variant) => variant.label).slice(0, 5)
+              const stock = productStock(product)
+              const groups = variantGroups(product)
               return (
                 <article
                   key={product.id}
@@ -190,12 +246,49 @@ export function ProductAdminPanel() {
                       </span>
                       <span className="rounded-full border px-2 py-1">/{product.slug}</span>
                     </div>
-                    {variantLabels.length > 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        Variantes: {variantLabels.join(", ")}
-                        {product.variants.length > variantLabels.length ? "..." : ""}
-                      </p>
-                    ) : null}
+                    {groups.length > 0 ? (
+                      <div className="grid gap-2">
+                        {groups.map((group) => (
+                          <div
+                            key={group.color}
+                            className="rounded-2xl border bg-card/60 p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold">{group.color}</p>
+                              <Badge
+                                variant={
+                                  group.totalStock <= 0
+                                    ? "destructive"
+                                    : group.totalStock <= 2
+                                      ? "outline"
+                                      : "secondary"
+                                }
+                              >
+                                Stock {group.totalStock}
+                              </Badge>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {group.variants.map((variant) => (
+                                <span
+                                  key={variant.key}
+                                  className={`rounded-full border px-2 py-1 text-xs ${
+                                    variant.stock <= 0
+                                      ? "bg-muted text-muted-foreground line-through"
+                                      : variant.stock <= 2
+                                        ? "border-destructive/40 bg-destructive/10 text-destructive"
+                                        : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {variant.size}: {variant.stock}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Sin variantes cargadas.</p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
                     <Button type="button" onClick={() => selectProduct(product)}>
