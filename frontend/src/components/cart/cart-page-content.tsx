@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, type PublicUser } from "@/lib/auth"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
-import { createStoreOrder, type OrderCreatePayload } from "@/lib/orders"
+import { createStoreOrder, type OrderCreatePayload, type OrderRead } from "@/lib/orders"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
@@ -27,6 +27,48 @@ function userDisplayName(user: PublicUser) {
   return [user.first_name, user.last_name].filter(Boolean).join(" ").trim()
 }
 
+function orderCode(orderId: string) {
+  return orderId.slice(0, 8).toUpperCase()
+}
+
+function paymentInstruction(paymentMethod: OrderCreatePayload["payment_method"]) {
+  if (paymentMethod === "transfer") {
+    return "Prepará el comprobante de transferencia y envialo por WhatsApp para confirmar el pedido."
+  }
+  if (paymentMethod === "mercado_pago") {
+    return "El local va a coordinar el link o medio de Mercado Pago para cerrar la compra."
+  }
+  if (paymentMethod === "cash") {
+    return "Podés pagar en efectivo cuando el comercio confirme disponibilidad."
+  }
+  return "El local revisa la reserva y coordina el medio de pago más conveniente."
+}
+
+function fulfillmentInstruction(fulfillmentMethod: OrderCreatePayload["fulfillment_method"]) {
+  if (fulfillmentMethod === "shipping") {
+    return "Coordiná dirección, costo y horario de envío con el local antes de cerrar la compra."
+  }
+  if (fulfillmentMethod === "local_payment") {
+    return "Retirás y pagás en Buenos Aires 68, Dolores, cuando el local confirme disponibilidad."
+  }
+  return "Retiro en Buenos Aires 68, Dolores, una vez confirmado el pedido."
+}
+
+function buildOrderConfirmationMessage(order: OrderRead) {
+  const itemLines = order.items
+    .map((item) => `- ${item.quantity} x ${item.product_name}`)
+    .join("\n")
+
+  return [
+    `Hola, hice una reserva en FreeStyle. Pedido #${orderCode(order.id)}.`,
+    "",
+    itemLines,
+    "",
+    `Total: ${formatCartPrice(Number(order.total))}`,
+    "Quedo atento/a para confirmar pago y disponibilidad.",
+  ].join("\n")
+}
+
 export function CartPageContent() {
   const { items, total, incrementItem, decrementItem, removeItem, clearCart } = useCart()
   const [copied, setCopied] = useState(false)
@@ -39,10 +81,13 @@ export function CartPageContent() {
     useState<OrderCreatePayload["fulfillment_method"]>("pickup")
   const [notes, setNotes] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [orderId, setOrderId] = useState<string | null>(null)
+  const [createdOrder, setCreatedOrder] = useState<OrderRead | null>(null)
   const [error, setError] = useState<string | null>(null)
   const message = useMemo(() => buildReservationMessage(items, total), [items, total])
   const whatsappHref = buildWhatsAppHref(message)
+  const createdOrderWhatsappHref = createdOrder
+    ? buildWhatsAppHref(buildOrderConfirmationMessage(createdOrder))
+    : null
 
   useEffect(() => {
     let isMounted = true
@@ -72,7 +117,7 @@ export function CartPageContent() {
   async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
-    setOrderId(null)
+    setCreatedOrder(null)
     setIsSubmitting(true)
 
     try {
@@ -90,7 +135,7 @@ export function CartPageContent() {
           variant_label: item.variantLabel,
         })),
       })
-      setOrderId(order.id)
+      setCreatedOrder(order)
       clearCart()
     } catch (orderError) {
       setError(orderError instanceof Error ? orderError.message : "No pudimos crear la reserva")
@@ -99,25 +144,69 @@ export function CartPageContent() {
     }
   }
 
-  if (orderId) {
+  if (createdOrder) {
+    const code = orderCode(createdOrder.id)
+
     return (
-      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl flex-col justify-center gap-6 px-4 py-16 md:px-8">
+      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col justify-center gap-6 px-4 py-16 md:px-8">
         <Badge className="w-fit">Reserva creada</Badge>
         <div className="space-y-3">
           <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
-            Consulta guardada
+            Pedido reservado
           </h1>
           <p className="w-fit rounded-2xl border bg-secondary/40 px-4 py-3 font-mono text-sm">
-            Reserva #{orderId.slice(0, 8).toUpperCase()}
+            Reserva #{code}
           </p>
           <p className="max-w-2xl text-muted-foreground">
-            Guardamos tu consulta con el código {orderId.slice(0, 8).toUpperCase()}. El local puede revisarla desde el panel y coordinar el próximo paso.
+            Guardamos tu pedido con el código {code}. El local puede verlo desde el panel y coordinar
+            el próximo paso sin que tengas que cargar todo de nuevo.
           </p>
         </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <article className="rounded-2xl border bg-card p-4">
+            <p className="text-sm font-semibold">1. Pago</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {paymentInstruction(paymentMethod)}
+            </p>
+          </article>
+          <article className="rounded-2xl border bg-card p-4">
+            <p className="text-sm font-semibold">2. Entrega o retiro</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {fulfillmentInstruction(fulfillmentMethod)}
+            </p>
+          </article>
+          <article className="rounded-2xl border bg-card p-4">
+            <p className="text-sm font-semibold">3. Seguimiento</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Podés volver a esta reserva desde tu perfil o abrir el seguimiento con el código del pedido.
+            </p>
+          </article>
+        </div>
+
+        <div className="rounded-2xl border bg-secondary/40 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Total estimado</p>
+              <p className="text-2xl font-black">{formatCartPrice(Number(createdOrder.total))}</p>
+            </div>
+            <Badge variant={createdOrder.payment_status === "paid" ? "default" : "secondary"}>
+              Pago pendiente de confirmación
+            </Badge>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <Button asChild>
-            <Link href={`/pedido/${orderId}`}>Ver seguimiento</Link>
+            <Link href={`/pedido/${createdOrder.id}`}>Ver seguimiento</Link>
           </Button>
+          {createdOrderWhatsappHref ? (
+            <Button asChild variant="secondary">
+              <a href={createdOrderWhatsappHref} target="_blank" rel="noreferrer">
+                Confirmar por WhatsApp
+              </a>
+            </Button>
+          ) : null}
           <Button asChild>
             <Link href="/productos">Seguir viendo productos</Link>
           </Button>

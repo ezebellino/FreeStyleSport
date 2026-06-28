@@ -35,12 +35,56 @@ const paymentMethodLabels: Record<string, string> = {
 
 const fulfillmentLabels: Record<string, string> = {
   pickup: "Retiro en local",
-  shipping: "Envio",
+  shipping: "Envío",
   local_payment: "Pago en el local",
 }
 
+const orderSteps = [
+  { value: "pending", label: "Reserva creada" },
+  { value: "confirmed", label: "Confirmada" },
+  { value: "preparing", label: "Preparando" },
+  { value: "ready", label: "Lista" },
+  { value: "delivered", label: "Entregada" },
+] as const
+
 function orderCode(orderId: string) {
   return orderId.slice(0, 8).toUpperCase()
+}
+
+function statusStepIndex(status: string) {
+  return orderSteps.findIndex((step) => step.value === status)
+}
+
+function nextCustomerStep(order: OrderRead) {
+  if (order.status === "cancelled") {
+    return "La reserva fue cancelada. Si necesitás recuperarla, contactá al local con el código del pedido."
+  }
+  if (order.payment_status !== "paid") {
+    return "Falta confirmar el pago. Coordiná transferencia, Mercado Pago o pago en local para que el pedido avance."
+  }
+  if (order.status === "pending") {
+    return "El local ya recibió la reserva y debe confirmar stock y datos del pedido."
+  }
+  if (order.status === "confirmed") {
+    return "El pedido está confirmado. El próximo paso es la preparación."
+  }
+  if (order.status === "preparing") {
+    return "El local está preparando el pedido. Te avisarán cuando esté listo."
+  }
+  if (order.status === "ready") {
+    return order.fulfillment_method === "shipping"
+      ? "El pedido está listo. Falta coordinar o completar el envío."
+      : "El pedido está listo para retirar en Buenos Aires 68, Dolores."
+  }
+  if (order.status === "delivered") {
+    return "Pedido entregado. Gracias por comprar en FreeStyle."
+  }
+  return "El local está revisando el pedido."
+}
+
+function variantLabel(item: OrderRead["items"][number]) {
+  const label = item.attributes?.variant_label
+  return typeof label === "string" && label.trim() ? label : null
 }
 
 async function loadOrder(orderId: string): Promise<OrderRead | null> {
@@ -59,6 +103,7 @@ export default async function OrderTrackingPage({
   if (!order) {
     notFound()
   }
+  const currentStepIndex = statusStepIndex(order.status)
 
   return (
     <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col gap-8 px-4 py-10 md:px-8 md:py-16">
@@ -69,8 +114,8 @@ export default async function OrderTrackingPage({
             Reserva #{orderCode(order.id)}
           </h1>
           <p className="max-w-2xl text-muted-foreground">
-            Guarda este numero para consultar por WhatsApp o en el local. El estado se actualiza
-            cuando el equipo confirma pago, stock y preparacion.
+            Guardá este número para consultar por WhatsApp o en el local. El estado se actualiza
+            cuando el equipo confirma pago, stock y preparación.
           </p>
         </div>
 
@@ -89,6 +134,48 @@ export default async function OrderTrackingPage({
             <span className="text-sm text-muted-foreground">Total</span>
             <span className="text-xl font-black">{formatCartPrice(Number(order.total))}</span>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border bg-card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black">Progreso del pedido</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {nextCustomerStep(order)}
+            </p>
+          </div>
+          <Badge variant={order.payment_status === "paid" ? "default" : "secondary"}>
+            {paymentStatusLabels[order.payment_status] ?? order.payment_status}
+          </Badge>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-5">
+          {orderSteps.map((step, index) => {
+            const isDone = currentStepIndex >= index && order.status !== "cancelled"
+            const isCurrent = currentStepIndex === index && order.status !== "cancelled"
+            return (
+              <div
+                key={step.value}
+                className={`rounded-2xl border p-3 ${
+                  isDone ? "border-primary/50 bg-primary/10" : "bg-background/50"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`flex size-6 items-center justify-center rounded-full text-xs font-black ${
+                      isDone ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {index + 1}
+                  </span>
+                  <p className="text-sm font-semibold">{step.label}</p>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {isCurrent ? "Estado actual" : isDone ? "Completado" : "Pendiente"}
+                </p>
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -113,6 +200,11 @@ export default async function OrderTrackingPage({
                   {item.quantity} unidad{item.quantity === 1 ? "" : "es"} x{" "}
                   {formatCartPrice(Number(item.unit_price))}
                 </p>
+                {variantLabel(item) ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Variante: {variantLabel(item)}
+                  </p>
+                ) : null}
               </div>
               <p className="text-xl font-black">{formatCartPrice(Number(item.line_total))}</p>
             </article>
