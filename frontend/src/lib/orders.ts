@@ -12,6 +12,8 @@ export type OrderCreatePayload = {
     quantity: number
     variant_id?: string
     variant_label?: string
+    variant_color?: string
+    variant_size?: string
   }>
 }
 
@@ -43,8 +45,33 @@ export type OrderRead = {
       brand?: string | null
       variant_id?: string | null
       variant_label?: string | null
+      variant_color?: string | null
+      variant_size?: string | null
+      variant_display?: string | null
     } | Record<string, unknown>
   }>
+}
+
+function orderAttributeText(item: OrderRead["items"][number], key: string) {
+  const attributes = item.attributes as Record<string, unknown> | undefined
+  const value = attributes?.[key]
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+export function orderItemVariantDescription(item: OrderRead["items"][number]) {
+  const display = orderAttributeText(item, "variant_display")
+  if (display) {
+    return display
+  }
+
+  const color = orderAttributeText(item, "variant_color")
+  const size = orderAttributeText(item, "variant_size")
+  const parts = [
+    color ? `Color: ${color}` : null,
+    size ? `Talle: ${size}` : null,
+  ].filter(Boolean)
+
+  return parts.length > 0 ? parts.join(" · ") : orderAttributeText(item, "variant_label")
 }
 
 export async function createStoreOrder(payload: OrderCreatePayload): Promise<OrderRead> {
