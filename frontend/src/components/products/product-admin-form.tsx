@@ -13,6 +13,7 @@ import {
   productAudiences,
   productCategories,
   updateAdminProduct,
+  uploadAdminProductImage,
 } from "@/lib/products"
 
 function slugify(value: string) {
@@ -75,21 +76,25 @@ function skuPart(value: string) {
   return slugify(value).toUpperCase()
 }
 
+function emptyImageList(product?: Product | null) {
+  return product?.images.length ? product.images.map((image) => image.url) : [""]
+}
+
 export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<ProductAdminFormProps>) {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [bulkColors, setBulkColors] = useState("")
   const [bulkSizes, setBulkSizes] = useState("")
   const [bulkStock, setBulkStock] = useState(0)
   const [bulkPrice, setBulkPrice] = useState("")
   const [bulkSkuBase, setBulkSkuBase] = useState("")
-  const [imagePreviewUrl, setImagePreviewUrl] = useState(product?.images[0]?.url ?? "")
+  const [imageUrls, setImageUrls] = useState<string[]>(() => emptyImageList(product))
   const [variants, setVariants] = useState<VariantDraft[]>(
     product?.variants.length ? product.variants.map(variantToDraft) : [emptyVariantDraft()],
   )
   const isEditing = Boolean(product)
-  const mainImage = product?.images[0]
   const categoryValue = product ? getProductCategoryValue(product) : "ropa"
   const audienceValue = product ? getProductAudienceValue(product) : "unisex"
 
@@ -110,6 +115,24 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
       currentVariants.length > 1
         ? currentVariants.filter((_, variantIndex) => variantIndex !== index)
         : currentVariants,
+    )
+  }
+
+  function updateImageUrl(index: number, value: string) {
+    setImageUrls((currentImages) =>
+      currentImages.map((currentImage, imageIndex) => (imageIndex === index ? value : currentImage)),
+    )
+  }
+
+  function addImageUrl(value = "") {
+    setImageUrls((currentImages) => [...currentImages, value])
+  }
+
+  function removeImageUrl(index: number) {
+    setImageUrls((currentImages) =>
+      currentImages.length > 1
+        ? currentImages.filter((_, imageIndex) => imageIndex !== index)
+        : [""],
     )
   }
 
@@ -178,7 +201,6 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
     const name = String(form.get("name") ?? "")
     const category = String(form.get("category") ?? "")
     const audience = String(form.get("audience") ?? "unisex")
-    const imageUrl = String(form.get("imageUrl") ?? "")
     const price = Number(form.get("price") ?? 0)
     const compareAtPrice = Number(form.get("compareAtPrice") ?? 0)
     const slug = slugify(String(form.get("slug") ?? "") || name)
@@ -209,9 +231,15 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         compare_at_price: compareAtPrice > 0 ? compareAtPrice : undefined,
         currency: "ARS",
         attributes: { linea: audience, rubro: "generico" },
-        images: imageUrl
-          ? [{ url: imageUrl, alt_text: name, provider: imageUrl.includes("cloudinary") ? "cloudinary" : "url" }]
-          : [],
+        images: imageUrls
+          .map((url) => url.trim())
+          .filter(Boolean)
+          .map((url, index) => ({
+            url,
+            alt_text: index === 0 ? name : `${name} ${index + 1}`,
+            provider: url.includes("cloudinary") ? "cloudinary" : "url",
+            sort_order: index,
+          })),
         variants: normalizedVariants.length > 0 ? normalizedVariants : [
           { label: "Único", stock_quantity: 0, attributes: { talle: "Único" }, sort_order: 0 },
         ],
@@ -224,12 +252,35 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
       if (!product) {
         event.currentTarget.reset()
         setVariants([emptyVariantDraft()])
-        setImagePreviewUrl("")
+        setImageUrls([""])
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No pudimos guardar los cambios")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  async function uploadProductImage(file: File | undefined) {
+    if (!file) return
+    setMessage(null)
+    setError(null)
+    setIsUploadingImage(true)
+
+    try {
+      const uploadedImage = await uploadAdminProductImage(file)
+      setImageUrls((currentImages) => {
+        const emptyIndex = currentImages.findIndex((url) => !url.trim())
+        if (emptyIndex === -1) {
+          return [...currentImages, uploadedImage.url]
+        }
+        return currentImages.map((url, index) => (index === emptyIndex ? uploadedImage.url : url))
+      })
+      setMessage("Imagen subida. Revisá la vista previa y guardá el producto.")
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No pudimos subir la imagen")
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 
@@ -335,32 +386,71 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
           placeholder="FreeStyle"
         />
       </label>
-      <label className="space-y-2 md:col-span-2">
-        <span className="text-sm font-medium">Imagen</span>
-        <input
-          className="h-11 w-full rounded-lg border bg-background px-3 text-sm"
-          defaultValue={mainImage?.url ?? ""}
-          name="imageUrl"
-          onChange={(event) => setImagePreviewUrl(event.target.value)}
-          placeholder="https://res.cloudinary.com/..."
-          type="url"
-        />
-      </label>
-      <div className="grid gap-3 rounded-2xl border bg-background/50 p-4 md:col-span-2 md:grid-cols-[12rem_1fr]">
-        <div className="aspect-square overflow-hidden rounded-2xl border bg-white">
-          <ProductImage
-            alt={product?.name ?? "Vista previa del producto"}
-            className="size-full object-contain p-2"
-            src={imagePreviewUrl}
-          />
+      <div className="space-y-3 md:col-span-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-medium">Imagenes</p>
+            <p className="text-xs text-muted-foreground">
+              La primera imagen queda como portada del catalogo. Podes subir varias fotos del mismo producto.
+            </p>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => addImageUrl()}>
+            Agregar imagen
+          </Button>
         </div>
-        <div className="self-center">
-          <p className="text-sm font-semibold">Vista previa</p>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Si la imagen no carga, la tienda muestra un fondo FreeStyle para evitar una card rota.
-            Cuando integremos subida directa, este espacio va a servir para revisar el archivo antes
-            de publicarlo.
-          </p>
+
+        <label className="block space-y-2 rounded-2xl border bg-background/50 p-4">
+          <span className="text-sm font-medium">Subir imagen desde tu equipo</span>
+          <input
+            accept="image/png,image/jpeg,image/webp"
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+            disabled={isUploadingImage}
+            onChange={(event) => void uploadProductImage(event.target.files?.[0])}
+            type="file"
+          />
+          <span className="text-xs text-muted-foreground">
+            {isUploadingImage
+              ? "Subiendo imagen a Cloudinary..."
+              : "Formatos recomendados: JPG, PNG o WEBP. Al terminar, la URL queda cargada abajo."}
+          </span>
+        </label>
+
+        <div className="grid gap-3">
+          {imageUrls.map((imageUrl, index) => (
+            <div
+              key={`${index}-${imageUrl}`}
+              className="grid gap-3 rounded-2xl border bg-background/50 p-3 md:grid-cols-[7rem_1fr_auto]"
+            >
+              <div className="aspect-square overflow-hidden rounded-xl border bg-white">
+                <ProductImage
+                  alt={`Vista previa ${index + 1}`}
+                  className="size-full object-contain p-2"
+                  src={imageUrl}
+                />
+              </div>
+              <label className="space-y-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {index === 0 ? "Imagen principal" : `Imagen ${index + 1}`}
+                </span>
+                <input
+                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                  onChange={(event) => updateImageUrl(index, event.target.value)}
+                  placeholder="https://res.cloudinary.com/..."
+                  type="url"
+                  value={imageUrl}
+                />
+              </label>
+              <Button
+                className="self-end"
+                disabled={imageUrls.length === 1}
+                onClick={() => removeImageUrl(index)}
+                type="button"
+                variant="ghost"
+              >
+                Quitar
+              </Button>
+            </div>
+          ))}
         </div>
       </div>
       <label className="space-y-2 md:col-span-2">

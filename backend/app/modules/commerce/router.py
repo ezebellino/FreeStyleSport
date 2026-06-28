@@ -1,3 +1,5 @@
+import hashlib
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -7,6 +9,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.session import get_session
 from app.modules.commerce.schemas import (
+    CloudinarySignatureRead,
     OrderCreate,
     OrderRead,
     OrderUpdate,
@@ -49,6 +52,32 @@ async def require_store_admin(
 
 
 StoreAdminDependency = Annotated[PublicUser, Depends(require_store_admin)]
+
+
+def _cloudinary_signature(settings: Settings) -> CloudinarySignatureRead:
+    if (
+        not settings.cloudinary_cloud_name
+        or not settings.cloudinary_api_key
+        or not settings.cloudinary_api_secret
+    ):
+        raise ApiError(
+            503,
+            "cloudinary_not_configured",
+            "Cloudinary no esta configurado para subir imagenes",
+        )
+
+    timestamp = int(time.time())
+    folder = settings.cloudinary_upload_folder
+    signature_payload = f"folder={folder}&timestamp={timestamp}{settings.cloudinary_api_secret}"
+    signature = hashlib.sha1(signature_payload.encode("utf-8")).hexdigest()
+    return CloudinarySignatureRead(
+        cloud_name=settings.cloudinary_cloud_name,
+        api_key=settings.cloudinary_api_key,
+        folder=folder,
+        timestamp=timestamp,
+        signature=signature,
+        upload_url=f"https://api.cloudinary.com/v1_1/{settings.cloudinary_cloud_name}/image/upload",
+    )
 
 
 @router.get("/products", response_model=list[ProductRead])
@@ -99,6 +128,14 @@ async def admin_products(
     admin: StoreAdminDependency,
 ) -> list[ProductRead]:
     return list(await list_admin_products(session))
+
+
+@router.get("/admin/uploads/cloudinary-signature", response_model=CloudinarySignatureRead)
+async def admin_cloudinary_signature(
+    settings: SettingsDependency,
+    admin: StoreAdminDependency,
+) -> CloudinarySignatureRead:
+    return _cloudinary_signature(settings)
 
 
 @router.get("/admin/orders", response_model=list[OrderRead])

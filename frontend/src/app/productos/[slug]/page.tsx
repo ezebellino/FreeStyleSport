@@ -40,24 +40,52 @@ export default async function ProductDetailPage({
     notFound()
   }
 
-  const image = product.images[0]
+  const images = product.images
+  const mainImage = images[0]
   const categoryLabel = getProductCategoryLabel(product)
   const audienceLabel = getProductAudienceLabel(product)
 
   return (
     <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-2 md:px-8 md:py-16">
-      <div className="aspect-[4/5] overflow-hidden rounded-3xl border bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]">
-        {image ? (
-          <ProductImage
-            alt={image.alt_text ?? product.name}
-            className="size-full object-contain p-8"
-            src={image.url}
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center font-display text-4xl font-black italic text-slate-500">
-            FreeStyle
+      <div className="space-y-3">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]">
+          {images.length > 1 ? (
+            <Badge className="absolute right-4 top-4 z-10 bg-background/90 text-foreground shadow-sm">
+              {images.length} fotos
+            </Badge>
+          ) : null}
+          {mainImage ? (
+            <ProductImage
+              alt={mainImage.alt_text ?? product.name}
+              className="size-full object-contain p-8"
+              src={mainImage.url}
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center font-display text-4xl font-black italic text-slate-500">
+              FreeStyle
+            </div>
+          )}
+        </div>
+        {images.length > 1 ? (
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+            {images.map((image, index) => (
+              <a
+                key={image.id ?? `${image.url}-${index}`}
+                className="aspect-square overflow-hidden rounded-2xl border bg-white transition hover:-translate-y-0.5 hover:shadow-md"
+                href={image.url}
+                rel="noreferrer"
+                target="_blank"
+                title={`Abrir imagen ${index + 1}`}
+              >
+                <ProductImage
+                  alt={image.alt_text ?? `${product.name} ${index + 1}`}
+                  className="size-full object-contain p-1.5"
+                  src={image.url}
+                />
+              </a>
+            ))}
           </div>
-        )}
+        ) : null}
       </div>
       <div className="flex flex-col justify-center gap-5">
         <div className="space-y-3">

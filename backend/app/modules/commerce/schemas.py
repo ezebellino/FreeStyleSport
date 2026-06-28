@@ -168,3 +168,12 @@ class OrderRead(BaseModel):
 class OrderUpdate(BaseModel):
     status: OrderStatus | None = None
     payment_status: PaymentStatus | None = None
+
+
+class CloudinarySignatureRead(BaseModel):
+    cloud_name: str
+    api_key: str
+    folder: str
+    timestamp: int
+    signature: str
+    upload_url: str
