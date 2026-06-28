@@ -54,6 +54,15 @@ export type ProductPayload = {
   }>
 }
 
+type CloudinarySignature = {
+  cloud_name: string
+  api_key: string
+  folder: string
+  timestamp: number
+  signature: string
+  upload_url: string
+}
+
 export const productCategories = [
   { label: "Ropa", value: "ropa" },
   { label: "Calzado", value: "calzado" },
@@ -254,4 +263,39 @@ export async function updateAdminProduct(productId: string, payload: Partial<Pro
     throw new Error(error?.message ?? "No pudimos actualizar el producto")
   }
   return response.json() as Promise<Product>
+}
+
+export async function uploadAdminProductImage(file: File): Promise<{ url: string; publicId?: string }> {
+  const signatureResponse = await fetch(`${publicApiUrl}/commerce/admin/uploads/cloudinary-signature`, {
+    credentials: "include",
+  })
+
+  if (!signatureResponse.ok) {
+    const error = (await signatureResponse.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos preparar la subida de imagen")
+  }
+
+  const signature = (await signatureResponse.json()) as CloudinarySignature
+  const formData = new FormData()
+  formData.set("file", file)
+  formData.set("api_key", signature.api_key)
+  formData.set("timestamp", String(signature.timestamp))
+  formData.set("folder", signature.folder)
+  formData.set("signature", signature.signature)
+
+  const uploadResponse = await fetch(signature.upload_url, {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!uploadResponse.ok) {
+    throw new Error("No pudimos subir la imagen a Cloudinary")
+  }
+
+  const payload = (await uploadResponse.json()) as { secure_url?: string; public_id?: string }
+  if (!payload.secure_url) {
+    throw new Error("Cloudinary no devolvio una URL valida")
+  }
+
+  return { url: payload.secure_url, publicId: payload.public_id }
 }

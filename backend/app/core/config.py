@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     email_from: str = "FreeStyle <onboarding@resend.dev>"
     public_app_url: str = "http://localhost:3000"
     email_confirmation_ttl_seconds: int = 60 * 60 * 24
+    cloudinary_cloud_name: str | None = None
+    cloudinary_api_key: str | None = None
+    cloudinary_api_secret: str | None = None
+    cloudinary_upload_folder: str = "freestyle/products"
 
     @field_validator("database_url", mode="before")
     @classmethod

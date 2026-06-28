@@ -13,6 +13,7 @@ import {
   productAudiences,
   productCategories,
   updateAdminProduct,
+  uploadAdminProductImage,
 } from "@/lib/products"
 
 function slugify(value: string) {
@@ -79,17 +80,17 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [bulkColors, setBulkColors] = useState("")
   const [bulkSizes, setBulkSizes] = useState("")
   const [bulkStock, setBulkStock] = useState(0)
   const [bulkPrice, setBulkPrice] = useState("")
   const [bulkSkuBase, setBulkSkuBase] = useState("")
-  const [imagePreviewUrl, setImagePreviewUrl] = useState(product?.images[0]?.url ?? "")
+  const [imageUrl, setImageUrl] = useState(product?.images[0]?.url ?? "")
   const [variants, setVariants] = useState<VariantDraft[]>(
     product?.variants.length ? product.variants.map(variantToDraft) : [emptyVariantDraft()],
   )
   const isEditing = Boolean(product)
-  const mainImage = product?.images[0]
   const categoryValue = product ? getProductCategoryValue(product) : "ropa"
   const audienceValue = product ? getProductAudienceValue(product) : "unisex"
 
@@ -178,7 +179,6 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
     const name = String(form.get("name") ?? "")
     const category = String(form.get("category") ?? "")
     const audience = String(form.get("audience") ?? "unisex")
-    const imageUrl = String(form.get("imageUrl") ?? "")
     const price = Number(form.get("price") ?? 0)
     const compareAtPrice = Number(form.get("compareAtPrice") ?? 0)
     const slug = slugify(String(form.get("slug") ?? "") || name)
@@ -224,12 +224,29 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
       if (!product) {
         event.currentTarget.reset()
         setVariants([emptyVariantDraft()])
-        setImagePreviewUrl("")
+        setImageUrl("")
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No pudimos guardar los cambios")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  async function uploadProductImage(file: File | undefined) {
+    if (!file) return
+    setMessage(null)
+    setError(null)
+    setIsUploadingImage(true)
+
+    try {
+      const uploadedImage = await uploadAdminProductImage(file)
+      setImageUrl(uploadedImage.url)
+      setMessage("Imagen subida. Revisá la vista previa y guardá el producto.")
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No pudimos subir la imagen")
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 
@@ -339,19 +356,34 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         <span className="text-sm font-medium">Imagen</span>
         <input
           className="h-11 w-full rounded-lg border bg-background px-3 text-sm"
-          defaultValue={mainImage?.url ?? ""}
           name="imageUrl"
-          onChange={(event) => setImagePreviewUrl(event.target.value)}
+          onChange={(event) => setImageUrl(event.target.value)}
           placeholder="https://res.cloudinary.com/..."
           type="url"
+          value={imageUrl}
         />
+      </label>
+      <label className="space-y-2 md:col-span-2">
+        <span className="text-sm font-medium">Subir imagen desde tu equipo</span>
+        <input
+          accept="image/png,image/jpeg,image/webp"
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+          disabled={isUploadingImage}
+          onChange={(event) => void uploadProductImage(event.target.files?.[0])}
+          type="file"
+        />
+        <span className="text-xs text-muted-foreground">
+          {isUploadingImage
+            ? "Subiendo imagen a Cloudinary..."
+            : "Formatos recomendados: JPG, PNG o WEBP. Al terminar, la URL queda cargada arriba."}
+        </span>
       </label>
       <div className="grid gap-3 rounded-2xl border bg-background/50 p-4 md:col-span-2 md:grid-cols-[12rem_1fr]">
         <div className="aspect-square overflow-hidden rounded-2xl border bg-white">
           <ProductImage
             alt={product?.name ?? "Vista previa del producto"}
             className="size-full object-contain p-2"
-            src={imagePreviewUrl}
+            src={imageUrl}
           />
         </div>
         <div className="self-center">
