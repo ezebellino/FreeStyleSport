@@ -9,6 +9,7 @@ import { LoadingState } from "@/components/ui/loading-state"
 import { formatCartPrice } from "@/lib/cart"
 import {
   listAdminOrders,
+  orderItemVariantDescription,
   type OrderRead,
   updateAdminOrderPaymentStatus,
   updateAdminOrderStatus,
@@ -68,11 +69,6 @@ function orderDateLabel(createdAt?: string) {
   }).format(new Date(createdAt))
 }
 
-function variantLabel(item: OrderRead["items"][number]) {
-  const label = item.attributes?.variant_label
-  return typeof label === "string" && label.trim() ? label : null
-}
-
 function normalizePhoneForWhatsApp(phone: string) {
   const digits = phone.replace(/\D/g, "").replace(/^0+/, "")
   if (!digits) return null
@@ -87,7 +83,7 @@ function buildWhatsAppHref(order: OrderRead) {
 
   const itemLines = order.items
     .map((item) => {
-      const variant = variantLabel(item)
+      const variant = orderItemVariantDescription(item)
       return `- ${item.quantity} x ${item.product_name}${variant ? ` (${variant})` : ""}`
     })
     .join("\n")
@@ -335,8 +331,10 @@ export function OrderAdminPanel() {
                       <p className="text-muted-foreground">
                         {item.quantity} x {formatCartPrice(Number(item.unit_price))}
                       </p>
-                      {variantLabel(item) ? (
-                        <p className="text-xs text-muted-foreground">Variante: {variantLabel(item)}</p>
+                      {orderItemVariantDescription(item) ? (
+                        <p className="text-xs text-muted-foreground">
+                          Variante: {orderItemVariantDescription(item)}
+                        </p>
                       ) : null}
                     </div>
                     <p className="font-black">{formatCartPrice(Number(item.line_total))}</p>

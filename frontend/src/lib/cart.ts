@@ -53,6 +53,15 @@ export function productToCartItem(product: Product, variantId?: string): CartIte
   }
 }
 
+export function cartItemVariantDescription(item: CartItem) {
+  const parts = [
+    item.variantColor ? `Color: ${item.variantColor}` : null,
+    item.variantSize ? `Talle: ${item.variantSize}` : null,
+  ].filter(Boolean)
+
+  return parts.length > 0 ? parts.join(" · ") : item.variantLabel
+}
+
 export function getCartItemCount(items: CartItem[]) {
   return items.reduce((total, item) => total + item.quantity, 0)
 }
@@ -113,8 +122,10 @@ export function formatCartPrice(value: number) {
 
 export function buildReservationMessage(items: CartItem[], total: number) {
   const lines = items.map(
-    (item) =>
-      `- ${item.name}${item.variantLabel ? ` / ${item.variantLabel}` : ""} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`,
+    (item) => {
+      const variantDescription = cartItemVariantDescription(item)
+      return `- ${item.name}${variantDescription ? ` / ${variantDescription}` : ""} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`
+    },
   )
 
   return [

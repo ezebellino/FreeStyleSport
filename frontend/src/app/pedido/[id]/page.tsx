@@ -5,7 +5,7 @@ import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatCartPrice } from "@/lib/cart"
-import { getStoreOrder, type OrderRead } from "@/lib/orders"
+import { getStoreOrder, orderItemVariantDescription, type OrderRead } from "@/lib/orders"
 
 const orderStatusLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -80,11 +80,6 @@ function nextCustomerStep(order: OrderRead) {
     return "Pedido entregado. Gracias por comprar en FreeStyle."
   }
   return "El local está revisando el pedido."
-}
-
-function variantLabel(item: OrderRead["items"][number]) {
-  const label = item.attributes?.variant_label
-  return typeof label === "string" && label.trim() ? label : null
 }
 
 async function loadOrder(orderId: string): Promise<OrderRead | null> {
@@ -200,9 +195,9 @@ export default async function OrderTrackingPage({
                   {item.quantity} unidad{item.quantity === 1 ? "" : "es"} x{" "}
                   {formatCartPrice(Number(item.unit_price))}
                 </p>
-                {variantLabel(item) ? (
+                {orderItemVariantDescription(item) ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Variante: {variantLabel(item)}
+                    Variante: {orderItemVariantDescription(item)}
                   </p>
                 ) : null}
               </div>

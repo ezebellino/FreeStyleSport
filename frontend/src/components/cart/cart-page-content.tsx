@@ -10,7 +10,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, type PublicUser } from "@/lib/auth"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
-import { createStoreOrder, type OrderCreatePayload, type OrderRead } from "@/lib/orders"
+import {
+  createStoreOrder,
+  orderItemVariantDescription,
+  type OrderCreatePayload,
+  type OrderRead,
+} from "@/lib/orders"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
@@ -56,7 +61,10 @@ function fulfillmentInstruction(fulfillmentMethod: OrderCreatePayload["fulfillme
 
 function buildOrderConfirmationMessage(order: OrderRead) {
   const itemLines = order.items
-    .map((item) => `- ${item.quantity} x ${item.product_name}`)
+    .map((item) => {
+      const variantDescription = orderItemVariantDescription(item)
+      return `- ${item.quantity} x ${item.product_name}${variantDescription ? ` / ${variantDescription}` : ""}`
+    })
     .join("\n")
 
   return [
@@ -133,6 +141,8 @@ export function CartPageContent() {
           quantity: item.quantity,
           variant_id: item.variantId,
           variant_label: item.variantLabel,
+          variant_color: item.variantColor,
+          variant_size: item.variantSize,
         })),
       })
       setCreatedOrder(order)

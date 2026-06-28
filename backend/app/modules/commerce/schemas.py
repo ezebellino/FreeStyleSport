@@ -118,6 +118,8 @@ class OrderItemCreate(BaseModel):
     quantity: int = Field(default=1, ge=1, le=99)
     variant_id: str | None = Field(default=None, max_length=36)
     variant_label: str | None = Field(default=None, max_length=160)
+    variant_color: str | None = Field(default=None, max_length=80)
+    variant_size: str | None = Field(default=None, max_length=80)
 
 
 class OrderCreate(BaseModel):

@@ -11,16 +11,29 @@ function variantKey(productVariant: ProductVariant) {
   return productVariant.id ?? productVariant.label
 }
 
+function variantAttribute(productVariant: ProductVariant, names: string[]) {
+  for (const name of names) {
+    const value = productVariant.attributes[name]
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
 function variantColor(productVariant: ProductVariant) {
-  return typeof productVariant.attributes.color === "string"
-    ? productVariant.attributes.color
-    : "Sin color"
+  return variantAttribute(productVariant, ["color", "colour", "color_nombre"]) ?? "Color unico"
 }
 
 function variantSize(productVariant: ProductVariant) {
-  return typeof productVariant.attributes.talle === "string"
-    ? productVariant.attributes.talle
-    : productVariant.label
+  return variantAttribute(productVariant, ["talle", "numero", "size", "medida"]) ?? productVariant.label
+}
+
+function variantLabel(productVariant: ProductVariant) {
+  const color = variantColor(productVariant)
+  const size = variantSize(productVariant)
+  return color === "Color unico" ? size : `${color} / ${size}`
 }
 
 export function AddToCartButton({
@@ -71,7 +84,12 @@ export function AddToCartButton({
   const selectedVariant = variantOptions.find(
     (productVariant) => variantKey(productVariant) === selectedVariantId,
   )
-  const canAdd = !needsVariant || Boolean(selectedVariant && selectedVariant.stock_quantity > 0)
+  const selectedMatchesColor = selectedVariant && variantColor(selectedVariant) === selectedColor
+  const selectedCanBeUsed = selectedMatchesColor && selectedVariant.stock_quantity > 0
+  const effectiveSelectedVariant = selectedCanBeUsed ? selectedVariant : firstAvailableVariant
+  const canAdd =
+    !needsVariant || Boolean(effectiveSelectedVariant && effectiveSelectedVariant.stock_quantity > 0)
+  const selectedStock = effectiveSelectedVariant?.stock_quantity ?? 0
 
   function selectColor(color: string) {
     setSelectedColor(color)
@@ -89,61 +107,81 @@ export function AddToCartButton({
     if (!canAdd) {
       return
     }
-    addProduct(product, needsVariant ? selectedVariantId : undefined)
+    addProduct(
+      product,
+      needsVariant && effectiveSelectedVariant ? variantKey(effectiveSelectedVariant) : undefined,
+    )
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1400)
   }
 
   return (
-    <div className={className ? `flex flex-wrap gap-2 ${className}` : "flex flex-wrap gap-2"}>
+    <div className={className ? `grid gap-2 ${className}` : "grid gap-2"}>
       {needsVariant ? (
-        <>
-          <select
-            aria-label={`Elegir color para ${product.name}`}
-            className="min-w-28 rounded-lg border bg-background px-3 py-2 text-sm"
-            value={selectedColor}
-            onChange={(event) => selectColor(event.target.value)}
-          >
-            {colorOptions.map((colorOption) => (
-              <option
-                key={colorOption.color}
-                disabled={!colorOption.hasStock}
-                value={colorOption.color}
-              >
-                {colorOption.color}
-                {colorOption.hasStock ? "" : " - agotado"}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label={`Elegir talle para ${product.name}`}
-            className="min-w-24 rounded-lg border bg-background px-3 py-2 text-sm"
-            value={selectedVariantId}
-            onChange={(event) => setSelectedVariantId(event.target.value)}
-          >
-            {variantsForSelectedColor.map((productVariant) => (
-              <option
-                key={variantKey(productVariant)}
-                disabled={productVariant.stock_quantity <= 0}
-                value={variantKey(productVariant)}
-              >
-                {variantSize(productVariant)}
-                {productVariant.stock_quantity > 0 ? "" : " - agotado"}
-              </option>
-            ))}
-          </select>
-        </>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Color</span>
+            <select
+              aria-label={`Elegir color para ${product.name}`}
+              className="h-10 w-full rounded-lg border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              value={selectedColor}
+              onChange={(event) => selectColor(event.target.value)}
+            >
+              {colorOptions.map((colorOption) => (
+                <option
+                  key={colorOption.color}
+                  disabled={!colorOption.hasStock}
+                  value={colorOption.color}
+                >
+                  {colorOption.color}
+                  {colorOption.hasStock ? "" : " - agotado"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Talle</span>
+            <select
+              aria-label={`Elegir talle para ${product.name}`}
+              className="h-10 w-full rounded-lg border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              value={effectiveSelectedVariant ? variantKey(effectiveSelectedVariant) : ""}
+              onChange={(event) => setSelectedVariantId(event.target.value)}
+            >
+              {variantsForSelectedColor.map((productVariant) => (
+                <option
+                  key={variantKey(productVariant)}
+                  disabled={productVariant.stock_quantity <= 0}
+                  value={variantKey(productVariant)}
+                >
+                  {variantSize(productVariant)}
+                  {productVariant.stock_quantity > 0
+                    ? ` - ${productVariant.stock_quantity} disponibles`
+                    : " - agotado"}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       ) : null}
-      <Button
-        className={needsVariant ? "flex-1" : undefined}
-        disabled={!canAdd}
-        variant={variant}
-        type="button"
-        onClick={handleAdd}
-      >
-        <ShoppingBagIcon data-icon="inline-start" />
-        {added ? "Agregado" : canAdd ? "Agregar" : "Sin stock"}
-      </Button>
+      {needsVariant ? (
+        <p className={canAdd ? "text-xs text-muted-foreground" : "text-xs text-destructive"}>
+          {canAdd && effectiveSelectedVariant
+            ? `${variantLabel(effectiveSelectedVariant)} - ${selectedStock} en stock`
+            : "Elegí una combinación disponible para agregar al carrito."}
+        </p>
+      ) : null}
+      <div className="flex">
+        <Button
+          className="flex-1"
+          disabled={!canAdd}
+          variant={variant}
+          type="button"
+          onClick={handleAdd}
+        >
+          <ShoppingBagIcon data-icon="inline-start" />
+          {added ? "Agregado" : canAdd ? "Agregar" : "Sin stock"}
+        </Button>
+      </div>
     </div>
   )
 }

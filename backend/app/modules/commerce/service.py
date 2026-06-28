@@ -14,7 +14,13 @@ from app.modules.commerce.models import (
     ProductVariant,
     Tenant,
 )
-from app.modules.commerce.schemas import OrderCreate, OrderUpdate, ProductCreate, ProductUpdate
+from app.modules.commerce.schemas import (
+    OrderCreate,
+    OrderItemCreate,
+    OrderUpdate,
+    ProductCreate,
+    ProductUpdate,
+)
 
 DEFAULT_TENANT_SLUG = "freestyle"
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
@@ -90,6 +96,16 @@ def _slug_tokens(slug: str | None) -> set[str]:
 def _attribute_text(product: Product, key: str) -> str | None:
     value = product.attributes.get(key)
     return value.lower() if isinstance(value, str) else None
+
+
+def _variant_attribute_text(variant: ProductVariant | None, keys: tuple[str, ...]) -> str | None:
+    if variant is None:
+        return None
+    for key in keys:
+        value = variant.attributes.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def product_matches_catalog_filters(
@@ -282,11 +298,11 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
 async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
     tenant = await get_or_create_default_tenant(session)
     requested_quantities: dict[tuple[str, str | None], int] = {}
-    item_details: dict[tuple[str, str | None], tuple[str, str | None]] = {}
+    item_details: dict[tuple[str, str | None], OrderItemCreate] = {}
     for item in payload.items:
         key = (item.product_slug, item.variant_id or item.variant_label)
         requested_quantities[key] = requested_quantities.get(key, 0) + item.quantity
-        item_details[key] = (item.variant_id or "", item.variant_label)
+        item_details[key] = item
 
     requested_slugs = {product_slug for product_slug, _variant_key in requested_quantities}
 
@@ -313,7 +329,9 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
     subtotal = 0
     for (slug, variant_key), quantity in requested_quantities.items():
         product = products_by_slug[slug]
-        requested_variant_id, requested_variant_label = item_details[(slug, variant_key)]
+        requested_item = item_details[(slug, variant_key)]
+        requested_variant_id = requested_item.variant_id or ""
+        requested_variant_label = requested_item.variant_label
         selected_variant = next(
             (
                 variant
@@ -345,6 +363,21 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
         )
         line_total = unit_price * quantity
         subtotal += line_total
+        variant_color = (
+            _variant_attribute_text(selected_variant, ("color", "colour", "color_nombre"))
+            or requested_item.variant_color
+        )
+        variant_size = (
+            _variant_attribute_text(selected_variant, ("talle", "numero", "size", "medida"))
+            or requested_item.variant_size
+        )
+        variant_display_parts = [
+            f"Color: {variant_color}" if variant_color else None,
+            f"Talle: {variant_size}" if variant_size else None,
+        ]
+        variant_display = " · ".join(
+            value for value in variant_display_parts if value
+        ) or (selected_variant.label if selected_variant else requested_variant_label)
         order_items.append(
             OrderItem(
                 product_id=product.id,
@@ -364,6 +397,9 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
                     "variant_label": selected_variant.label
                     if selected_variant
                     else requested_variant_label,
+                    "variant_color": variant_color,
+                    "variant_size": variant_size,
+                    "variant_display": variant_display,
                 },
             )
         )
