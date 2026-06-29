@@ -170,6 +170,7 @@ export function OrderAdminPanel() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [cancelCandidate, setCancelCandidate] = useState<OrderRead | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const metrics = useMemo(() => {
@@ -258,14 +259,12 @@ export function OrderAdminPanel() {
     }
   }
 
-  async function cancelOrder(order: OrderRead) {
-    const stockMessage = orderStockReserved(order)
-      ? "Cancelar esta reserva devuelve el stock reservado."
-      : "Cancelar esta reserva no tiene stock reservado para devolver."
-    const shouldCancel = window.confirm(`${stockMessage}\n\n¿Querés cancelar el pedido #${orderCode(order.id)}?`)
-    if (!shouldCancel) return
+  async function confirmCancelOrder() {
+    if (!cancelCandidate) return
 
-    await changeStatus(order, "cancelled")
+    const orderToCancel = cancelCandidate
+    setCancelCandidate(null)
+    await changeStatus(orderToCancel, "cancelled")
   }
 
   if (isLoading) {
@@ -528,7 +527,7 @@ export function OrderAdminPanel() {
                           type="button"
                           variant="ghost"
                           disabled={isUpdating}
-                          onClick={() => void cancelOrder(order)}
+                          onClick={() => setCancelCandidate(order)}
                         >
                           <XCircleIcon data-icon="inline-start" />
                           Cancelar
@@ -542,6 +541,49 @@ export function OrderAdminPanel() {
           })}
         </div>
       )}
+
+      {cancelCandidate ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border bg-card shadow-2xl">
+            <div className="bg-[radial-gradient(circle_at_12%_18%,rgba(239,68,68,0.22),transparent_30%),linear-gradient(135deg,#18181b,#0d0d0f)] p-6">
+              <Badge variant="destructive">Cancelar reserva</Badge>
+              <h3 className="mt-4 font-display text-3xl font-black italic tracking-tight text-white">
+                Pedido #{orderCode(cancelCandidate.id)}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                {orderStockReserved(cancelCandidate)
+                  ? "Al cancelar esta reserva, el stock reservado vuelve a quedar disponible."
+                  : "Esta reserva no tiene stock reservado para devolver."}
+              </p>
+            </div>
+
+            <div className="space-y-4 p-6">
+              <div className="rounded-2xl border bg-secondary/40 p-4">
+                <p className="text-sm font-semibold">Confirmación necesaria</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Esta acción cambia el estado del pedido a cancelado y lo deja cerrado para el
+                  vendedor. Usala solo si el cliente desistió o si no se puede cumplir la reserva.
+                </p>
+              </div>
+
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="secondary" onClick={() => setCancelCandidate(null)}>
+                  Volver
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={updatingOrderId === cancelCandidate.id}
+                  onClick={() => void confirmCancelOrder()}
+                >
+                  <XCircleIcon data-icon="inline-start" />
+                  Confirmar cancelación
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

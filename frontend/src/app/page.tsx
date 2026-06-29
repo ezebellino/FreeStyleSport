@@ -167,16 +167,24 @@ export default async function HomePage() {
             </Reveal>
 
             <Reveal delay={0.08} className="relative z-0 min-h-[26rem]">
-              <div className="freestyle-athlete-stage">
-                <p className="freestyle-outline-word" aria-hidden="true">
-                  FREE
-                  <br />
-                  STYLE
-                </p>
-                <div className="freestyle-neon-sash" aria-hidden="true" />
-                <div className="freestyle-smoke freestyle-smoke-a" aria-hidden="true" />
-                <div className="freestyle-smoke freestyle-smoke-b" aria-hidden="true" />
-                <div className="freestyle-runner" aria-label="Silueta deportiva abstracta" />
+              <div className="relative min-h-[28rem] overflow-hidden rounded-[2rem] border border-white/10 bg-card shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+                <Image
+                  src="/brand/home-runner.png"
+                  alt="Persona corriendo al amanecer"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 48rem, 100vw"
+                  className="object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.62),rgba(0,0,0,0.18)_48%,rgba(0,0,0,0.46)),radial-gradient(circle_at_70%_20%,rgba(198,255,0,0.2),transparent_28%)]" />
+                <div className="absolute left-5 top-5 max-w-xs">
+                  <Badge className="bg-primary text-primary-foreground">FreeStyle</Badge>
+                  <p className="mt-3 font-display text-4xl font-black italic leading-none text-white">
+                    RENDÍ MÁS.
+                    <br />
+                    VESTÍ MEJOR.
+                  </p>
+                </div>
                 <div className="absolute bottom-5 left-5 right-5 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-white/15 bg-black/45 p-4 backdrop-blur">
                     <p className="text-2xl font-black text-white">{products.length}</p>
