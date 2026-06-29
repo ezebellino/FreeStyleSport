@@ -30,6 +30,7 @@ export type OrderRead = {
   subtotal: string | number
   total: string | number
   currency: string
+  metadata?: Record<string, unknown>
   created_at?: string
   items: Array<{
     id: string
