@@ -23,7 +23,7 @@ function variantAttribute(productVariant: ProductVariant, names: string[]) {
 }
 
 function variantColor(productVariant: ProductVariant) {
-  return variantAttribute(productVariant, ["color", "colour", "color_nombre"]) ?? "Color unico"
+  return variantAttribute(productVariant, ["color", "colour", "color_nombre"]) ?? "Color único"
 }
 
 function variantSize(productVariant: ProductVariant) {
@@ -33,7 +33,7 @@ function variantSize(productVariant: ProductVariant) {
 function variantLabel(productVariant: ProductVariant) {
   const color = variantColor(productVariant)
   const size = variantSize(productVariant)
-  return color === "Color unico" ? size : `${color} / ${size}`
+  return color === "Color único" ? size : `${color} / ${size}`
 }
 
 export function AddToCartButton({
