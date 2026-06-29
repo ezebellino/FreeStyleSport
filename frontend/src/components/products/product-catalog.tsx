@@ -15,12 +15,47 @@ import {
 } from "@/lib/products"
 
 type CatalogFilters = {
+  query: string
   category: string
   audience: string
   color: string
   size: string
   availability: "all" | "available"
   offer: "all" | "offers"
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+}
+
+function productSearchText(product: Product) {
+  const variantTexts = product.variants.flatMap((variant) => [
+    variant.label,
+    variant.sku ?? "",
+    variantColor(variant) ?? "",
+    variantSize(variant),
+  ])
+  const attributeTexts = Object.values(product.attributes).flatMap((value) =>
+    typeof value === "string" ? [value] : [],
+  )
+
+  return normalizeSearchText(
+    [
+      product.name,
+      product.slug,
+      product.description ?? "",
+      product.brand ?? "",
+      product.category?.name ?? "",
+      product.category?.slug ?? "",
+      ...productColors(product),
+      ...productSizes(product),
+      ...variantTexts,
+      ...attributeTexts,
+    ].join(" "),
+  )
 }
 
 function variantAttribute(variant: ProductVariant, names: string[]) {
@@ -69,7 +104,10 @@ function productHasOffer(product: Product) {
 }
 
 function filterProducts(products: Product[], filters: CatalogFilters) {
+  const query = normalizeSearchText(filters.query.trim())
+
   return products.filter((product) => {
+    if (query && !productSearchText(product).includes(query)) return false
     if (filters.category && getProductCategoryValue(product) !== filters.category) return false
     if (filters.audience && getProductAudienceValue(product) !== filters.audience) return false
     if (filters.availability === "available" && !productHasStock(product)) return false
@@ -90,12 +128,15 @@ export function ProductCatalog({
   products,
   initialCategory = "",
   initialAudience = "",
+  initialSearch = "",
 }: Readonly<{
   products: Product[]
   initialCategory?: string
   initialAudience?: string
+  initialSearch?: string
 }>) {
   const [filters, setFilters] = useState<CatalogFilters>({
+    query: initialSearch,
     category: initialCategory,
     audience: initialAudience,
     color: "",
@@ -123,6 +164,7 @@ export function ProductCatalog({
 
   function clearFilters() {
     setFilters({
+      query: "",
       category: "",
       audience: "",
       color: "",
@@ -133,6 +175,7 @@ export function ProductCatalog({
   }
 
   const activeFilterCount = [
+    filters.query,
     filters.category,
     filters.audience,
     filters.color,
@@ -153,7 +196,7 @@ export function ProductCatalog({
               </Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Filtra por categoria, linea, color, talle y stock disponible.
+              Busca por nombre, marca, descripcion, color, talle o categoria.
             </p>
           </div>
           {activeFilterCount > 0 ? (
@@ -162,6 +205,17 @@ export function ProductCatalog({
             </Button>
           ) : null}
         </div>
+
+        <label className="mt-4 block space-y-2">
+          <span className="text-xs font-medium text-muted-foreground">Buscar</span>
+          <input
+            className="h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:border-primary"
+            placeholder="Ej: Nike, zapatilla, verde, 41..."
+            type="search"
+            value={filters.query}
+            onChange={(event) => updateFilter("query", event.target.value)}
+          />
+        </label>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3 lg:grid-cols-6">
           <label className="space-y-2">

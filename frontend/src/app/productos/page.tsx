@@ -7,8 +7,8 @@ import { demoProducts, fetchProducts } from "@/lib/products"
 
 export default async function ProductsPage({
   searchParams,
-}: Readonly<{ searchParams: Promise<{ categoria?: string; linea?: string }> }>) {
-  const { categoria, linea } = await searchParams
+}: Readonly<{ searchParams: Promise<{ categoria?: string; linea?: string; q?: string }> }>) {
+  const { categoria, linea, q } = await searchParams
   let products = demoProducts
   let isDemo = true
 
@@ -50,7 +50,12 @@ export default async function ProductsPage({
         </div>
       ) : null}
 
-      <ProductCatalog products={products} initialCategory={categoria ?? ""} initialAudience={linea ?? ""} />
+      <ProductCatalog
+        products={products}
+        initialCategory={categoria ?? ""}
+        initialAudience={linea ?? ""}
+        initialSearch={q ?? ""}
+      />
     </section>
   )
 }
