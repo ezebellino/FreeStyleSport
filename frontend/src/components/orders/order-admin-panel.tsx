@@ -110,6 +110,20 @@ function nextActionLabel(order: OrderRead) {
   return "Revisar pedido"
 }
 
+function orderStockReserved(order: OrderRead) {
+  return Boolean(order.metadata?.stock_reserved)
+}
+
+function nextStatusAction(order: OrderRead): { status: string; label: string } | null {
+  if (order.status === "cancelled" || order.status === "delivered") return null
+  if (order.status === "pending") return { status: "confirmed", label: "Confirmar reserva" }
+  if (order.payment_status !== "paid") return null
+  if (order.status === "confirmed") return { status: "preparing", label: "Preparar" }
+  if (order.status === "preparing") return { status: "ready", label: "Marcar listo" }
+  if (order.status === "ready") return { status: "delivered", label: "Entregar" }
+  return null
+}
+
 function canAdvanceToStatus(order: OrderRead, status: string) {
   const option = statusOptions.find((statusOption) => statusOption.value === status)
   return !option?.requiresPaid || order.payment_status === "paid"
@@ -192,6 +206,16 @@ export function OrderAdminPanel() {
     }
   }
 
+  async function cancelOrder(order: OrderRead) {
+    const stockMessage = orderStockReserved(order)
+      ? "Cancelar esta reserva devuelve el stock reservado."
+      : "Cancelar esta reserva no tiene stock reservado para devolver."
+    const shouldCancel = window.confirm(`${stockMessage}\n\n¿Querés cancelar el pedido #${orderCode(order.id)}?`)
+    if (!shouldCancel) return
+
+    await changeStatus(order, "cancelled")
+  }
+
   return (
     <section className="space-y-4 rounded-3xl border bg-card p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -232,6 +256,8 @@ export function OrderAdminPanel() {
         <div className="grid gap-3">
           {orders.map((order) => {
             const whatsappHref = buildWhatsAppHref(order)
+            const stockReserved = orderStockReserved(order)
+            const quickStatusAction = nextStatusAction(order)
 
             return (
             <article key={order.id} className="rounded-2xl border bg-background/40 p-4">
@@ -242,6 +268,9 @@ export function OrderAdminPanel() {
                     <Badge variant="secondary">{statusLabel(order.status)}</Badge>
                     <Badge variant={order.payment_status === "paid" ? "default" : "destructive"}>
                       {paymentStatusLabel(order.payment_status)}
+                    </Badge>
+                    <Badge variant={stockReserved ? "secondary" : "outline"}>
+                      {stockReserved ? "Stock reservado" : "Stock liberado"}
                     </Badge>
                     <span className="text-sm font-semibold">{formatCartPrice(Number(order.total))}</span>
                     <span className="text-xs text-muted-foreground">{orderDateLabel(order.created_at)}</span>
@@ -254,6 +283,41 @@ export function OrderAdminPanel() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{nextActionLabel(order)}</Badge>
+                    {order.payment_status !== "paid" && order.status !== "cancelled" ? (
+                      <Button
+                        size="sm"
+                        type="button"
+                        disabled={updatingOrderId === order.id}
+                        onClick={() => void changePaymentStatus(order.id, "paid")}
+                      >
+                        Confirmar pago
+                      </Button>
+                    ) : null}
+                    {quickStatusAction ? (
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                        disabled={
+                          updatingOrderId === order.id ||
+                          !canAdvanceToStatus(order, quickStatusAction.status)
+                        }
+                        onClick={() => void changeStatus(order, quickStatusAction.status)}
+                      >
+                        {quickStatusAction.label}
+                      </Button>
+                    ) : null}
+                    {order.status !== "cancelled" && order.status !== "delivered" ? (
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                        disabled={updatingOrderId === order.id}
+                        onClick={() => void cancelOrder(order)}
+                      >
+                        Cancelar
+                      </Button>
+                    ) : null}
                     {whatsappHref ? (
                       <Button asChild size="sm" variant="secondary">
                         <a href={whatsappHref} target="_blank" rel="noreferrer">
@@ -275,6 +339,11 @@ export function OrderAdminPanel() {
                     <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm leading-6 text-destructive">
                       Sin pago confirmado. No preparar ni entregar este pedido hasta cobrar por transferencia,
                       pasarela de pago o local físico.
+                    </p>
+                  ) : null}
+                  {order.status === "cancelled" ? (
+                    <p className="rounded-xl border bg-secondary/50 p-3 text-sm leading-6 text-muted-foreground">
+                      Reserva cancelada. Si tenia stock reservado, el sistema ya lo devolvio.
                     </p>
                   ) : null}
                   {order.notes ? (

@@ -25,6 +25,7 @@ from app.modules.commerce.schemas import (
 DEFAULT_TENANT_SLUG = "freestyle"
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
 PAID_REQUIRED_ORDER_STATUSES = {"preparing", "ready", "delivered"}
+STOCK_RELEASING_ORDER_STATUSES = {"cancelled"}
 CATEGORY_ALIASES = {
     "calzado": {"calzado", "calzados", "zapatillas"},
     "ropa": {"ropa", "indumentaria", "remeras", "pantalones", "conjuntos"},
@@ -106,6 +107,88 @@ def _variant_attribute_text(variant: ProductVariant | None, keys: tuple[str, ...
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _order_stock_reserved(order: Order) -> bool:
+    return bool(order.order_metadata.get("stock_reserved"))
+
+
+def _set_order_stock_reserved(order: Order, is_reserved: bool) -> None:
+    order.order_metadata = {
+        **(order.order_metadata or {}),
+        "stock_reserved": is_reserved,
+    }
+
+
+def _order_variant_quantities(order: Order) -> dict[str, int]:
+    quantities: dict[str, int] = {}
+    for item in order.items:
+        variant_id = item.attributes.get("variant_id")
+        if isinstance(variant_id, str) and variant_id:
+            quantities[variant_id] = quantities.get(variant_id, 0) + item.quantity
+    return quantities
+
+
+def _reserve_variant_quantities(
+    variants_by_id: dict[str, ProductVariant | None],
+    quantities: dict[str, int],
+) -> None:
+    for variant_id, quantity in quantities.items():
+        variant = variants_by_id.get(variant_id)
+        if variant is None:
+            raise ApiError(
+                409,
+                "order_variant_unavailable",
+                "No encontramos una variante de la reserva para reservar stock",
+            )
+        if variant.stock_quantity < quantity:
+            raise ApiError(
+                409,
+                "order_variant_out_of_stock",
+                f"No hay stock suficiente para {variant.label}",
+            )
+
+    for variant_id, quantity in quantities.items():
+        variant = variants_by_id[variant_id]
+        variant.stock_quantity -= quantity
+
+
+def _release_variant_quantities(
+    variants_by_id: dict[str, ProductVariant | None],
+    quantities: dict[str, int],
+) -> None:
+    for variant_id, quantity in quantities.items():
+        variant = variants_by_id.get(variant_id)
+        if variant is not None:
+            variant.stock_quantity += quantity
+
+
+async def _reserve_order_stock(session: AsyncSession, order: Order) -> None:
+    if _order_stock_reserved(order):
+        return
+
+    quantities = _order_variant_quantities(order)
+    variants_by_id = {
+        variant_id: await session.get(ProductVariant, variant_id)
+        for variant_id in quantities
+    }
+    _reserve_variant_quantities(variants_by_id, quantities)
+
+    _set_order_stock_reserved(order, True)
+
+
+async def _release_order_stock(session: AsyncSession, order: Order) -> None:
+    if not _order_stock_reserved(order):
+        return
+
+    quantities = _order_variant_quantities(order)
+    variants_by_id = {
+        variant_id: await session.get(ProductVariant, variant_id)
+        for variant_id in quantities
+    }
+    _release_variant_quantities(variants_by_id, quantities)
+
+    _set_order_stock_reserved(order, False)
 
 
 def product_matches_catalog_filters(
@@ -421,6 +504,7 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
     )
     order.items = order_items
     session.add(order)
+    await _reserve_order_stock(session, order)
     await session.commit()
     await session.refresh(order, attribute_names=["items"])
     return order
@@ -492,6 +576,18 @@ async def update_order(session: AsyncSession, order_id: str, payload: OrderUpdat
         )
 
     if payload.status is not None:
+        is_releasing_stock = (
+            order.status not in STOCK_RELEASING_ORDER_STATUSES
+            and payload.status in STOCK_RELEASING_ORDER_STATUSES
+        )
+        is_reserving_stock = (
+            order.status in STOCK_RELEASING_ORDER_STATUSES
+            and payload.status not in STOCK_RELEASING_ORDER_STATUSES
+        )
+        if is_releasing_stock:
+            await _release_order_stock(session, order)
+        elif is_reserving_stock:
+            await _reserve_order_stock(session, order)
         order.status = payload.status
     if payload.payment_status is not None:
         order.payment_status = payload.payment_status

@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useMemo, useState } from "react"
 
 import { ProductImage } from "@/components/products/product-image"
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,13 @@ type VariantDraft = {
   sku: string
   price: string
   color: string
+}
+
+type VariantDraftGroup = {
+  key: string
+  color: string
+  totalStock: number
+  variants: Array<{ index: number; variant: VariantDraft }>
 }
 
 function variantToDraft(variant: ProductVariant): VariantDraft {
@@ -80,6 +87,27 @@ function emptyImageList(product?: Product | null) {
   return product?.images.length ? product.images.map((image) => image.url) : [""]
 }
 
+function groupVariantDrafts(variants: VariantDraft[]): VariantDraftGroup[] {
+  const groups = new Map<string, VariantDraftGroup>()
+
+  variants.forEach((variant, index) => {
+    const color = variant.color.trim() || "Sin color"
+    const key = color.toLowerCase()
+    const group = groups.get(key) ?? {
+      key,
+      color,
+      totalStock: 0,
+      variants: [],
+    }
+
+    group.totalStock += Math.max(0, Number(variant.stock) || 0)
+    group.variants.push({ index, variant })
+    groups.set(key, group)
+  })
+
+  return Array.from(groups.values())
+}
+
 export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<ProductAdminFormProps>) {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -94,6 +122,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
   const [variants, setVariants] = useState<VariantDraft[]>(
     product?.variants.length ? product.variants.map(variantToDraft) : [emptyVariantDraft()],
   )
+  const groupedVariants = useMemo(() => groupVariantDrafts(variants), [variants])
   const isEditing = Boolean(product)
   const categoryValue = product ? getProductCategoryValue(product) : "ropa"
   const audienceValue = product ? getProductAudienceValue(product) : "unisex"
@@ -108,6 +137,22 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
 
   function addVariant() {
     setVariants((currentVariants) => [...currentVariants, emptyVariantDraft()])
+  }
+
+  function addVariantForColor(color: string) {
+    setVariants((currentVariants) => [
+      ...currentVariants,
+      { ...emptyVariantDraft(), label: "", color: color === "Sin color" ? "" : color },
+    ])
+  }
+
+  function updateVariantGroupColor(indices: number[], color: string) {
+    const indexSet = new Set(indices)
+    setVariants((currentVariants) =>
+      currentVariants.map((variant, variantIndex) =>
+        indexSet.has(variantIndex) ? { ...variant, color } : variant,
+      ),
+    )
   }
 
   function removeVariant(index: number) {
@@ -538,6 +583,96 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
           </div>
         </div>
         <div className="grid gap-3">
+          {groupedVariants.map((group) => {
+            const groupIndices = group.variants.map(({ index }) => index)
+            return (
+              <div key={group.key} className="rounded-2xl border bg-background/40 p-4">
+                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                  <label className="space-y-2">
+                    <span className="text-xs font-medium text-muted-foreground">Color del grupo</span>
+                    <input
+                      className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                      value={group.color === "Sin color" ? "" : group.color}
+                      onChange={(event) => updateVariantGroupColor(groupIndices, event.target.value)}
+                      placeholder="Negro, Verde, Azul..."
+                    />
+                  </label>
+                  <div className="self-end rounded-xl border bg-card px-3 py-2 text-sm">
+                    <span className="text-muted-foreground">Stock color: </span>
+                    <span className="font-bold">{group.totalStock}</span>
+                  </div>
+                  <Button
+                    className="self-end"
+                    type="button"
+                    variant="secondary"
+                    onClick={() => addVariantForColor(group.color)}
+                  >
+                    Agregar talle
+                  </Button>
+                </div>
+
+                <div className="mt-3 grid gap-2">
+                  {group.variants.map(({ index, variant }) => (
+                    <div
+                      key={`${index}-${variant.sku}-${variant.label}`}
+                      className="grid gap-3 rounded-xl border bg-card/60 p-3 md:grid-cols-[1fr_0.7fr_0.8fr_0.8fr_auto]"
+                    >
+                      <label className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground">Talle o variante</span>
+                        <input
+                          className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                          value={variant.label}
+                          onChange={(event) => updateVariant(index, { label: event.target.value })}
+                          placeholder="M, 40, Unico"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground">Stock</span>
+                        <input
+                          className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                          min="0"
+                          type="number"
+                          value={variant.stock}
+                          onChange={(event) => updateVariant(index, { stock: Number(event.target.value) })}
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground">SKU</span>
+                        <input
+                          className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                          value={variant.sku}
+                          onChange={(event) => updateVariant(index, { sku: event.target.value })}
+                          placeholder="opcional"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground">Precio propio</span>
+                        <input
+                          className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                          min="0"
+                          type="number"
+                          value={variant.price}
+                          onChange={(event) => updateVariant(index, { price: event.target.value })}
+                          placeholder="opcional"
+                        />
+                      </label>
+                      <Button
+                        className="self-end"
+                        type="button"
+                        variant="ghost"
+                        onClick={() => removeVariant(index)}
+                        disabled={variants.length === 1}
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="hidden">
           {variants.map((variant, index) => (
             <div
               key={`${index}-${variant.sku}`}
