@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useState } from "react"
 
 import { ProductCard } from "@/components/products/product-card"
@@ -129,11 +130,13 @@ export function ProductCatalog({
   initialCategory = "",
   initialAudience = "",
   initialSearch = "",
+  initialOffer = "all",
 }: Readonly<{
   products: Product[]
   initialCategory?: string
   initialAudience?: string
   initialSearch?: string
+  initialOffer?: CatalogFilters["offer"]
 }>) {
   const [filters, setFilters] = useState<CatalogFilters>({
     query: initialSearch,
@@ -142,7 +145,7 @@ export function ProductCatalog({
     color: "",
     size: "",
     availability: "all",
-    offer: "all",
+    offer: initialOffer,
   })
 
   const colorOptions = useMemo(
@@ -157,9 +160,19 @@ export function ProductCatalog({
     () => filterProducts(products, filters),
     [filters, products],
   )
+  const offerCount = useMemo(() => products.filter(productHasOffer).length, [products])
+  const availableCount = useMemo(() => products.filter(productHasStock).length, [products])
+  const suggestedProduct = filters.query.trim() ? filteredProducts[0] : null
 
   function updateFilter<Key extends keyof CatalogFilters>(key: Key, value: CatalogFilters[Key]) {
     setFilters((currentFilters) => ({ ...currentFilters, [key]: value }))
+  }
+
+  function applyQuickSearch(query: string) {
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      query,
+    }))
   }
 
   function clearFilters() {
@@ -186,11 +199,44 @@ export function ProductCatalog({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border bg-card p-4 shadow-sm">
+      <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+        <div className="relative isolate border-b bg-[radial-gradient(circle_at_15%_20%,rgba(37,99,235,0.22),transparent_28%),linear-gradient(135deg,#020617,#111827_55%,#1d4ed8)] p-5 text-white">
+          <div className="absolute inset-y-0 right-0 -z-10 w-1/2 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.32),transparent_55%)]" />
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-white/70">
+                Busqueda rapida
+              </p>
+              <h2 className="mt-1 text-2xl font-black italic tracking-tight">
+                Encontralo por marca, talle, color o promo
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/75">
+                El cliente puede llegar al producto sin recorrer todo el catalogo. Si hay una
+                oferta o stock disponible, queda visible antes de abrir la ficha.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur">
+                <p className="text-2xl font-black">{products.length}</p>
+                <p className="text-xs text-white/70">productos</p>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur">
+                <p className="text-2xl font-black">{availableCount}</p>
+                <p className="text-xs text-white/70">con stock</p>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur">
+                <p className="text-2xl font-black">{offerCount}</p>
+                <p className="text-xs text-white/70">ofertas</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-black">Encontrar productos</h2>
+              <h3 className="text-lg font-black">Encontrar productos</h3>
               <Badge variant={activeFilterCount > 0 ? "default" : "secondary"}>
                 {filteredProducts.length} resultado{filteredProducts.length === 1 ? "" : "s"}
               </Badge>
@@ -216,6 +262,41 @@ export function ProductCatalog({
             onChange={(event) => updateFilter("query", event.target.value)}
           />
         </label>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["Nike", "Zapatilla", "Calzado", "Remera", "41"].map((query) => (
+            <Button
+              key={query}
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => applyQuickSearch(query)}
+            >
+              {query}
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant={filters.offer === "offers" ? "default" : "secondary"}
+            size="sm"
+            onClick={() => updateFilter("offer", filters.offer === "offers" ? "all" : "offers")}
+          >
+            Ver ofertas
+          </Button>
+          <Button
+            type="button"
+            variant={filters.availability === "available" ? "default" : "secondary"}
+            size="sm"
+            onClick={() =>
+              updateFilter(
+                "availability",
+                filters.availability === "available" ? "all" : "available",
+              )
+            }
+          >
+            Con stock
+          </Button>
+        </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3 lg:grid-cols-6">
           <label className="space-y-2">
@@ -304,6 +385,21 @@ export function ProductCatalog({
               <option value="offers">Solo ofertas</option>
             </select>
           </label>
+        </div>
+
+        {suggestedProduct ? (
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border bg-primary/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-bold">Mejor coincidencia: {suggestedProduct.name}</p>
+              <p className="text-muted-foreground">
+                Abrilo para elegir color, talle y confirmar disponibilidad.
+              </p>
+            </div>
+            <Button asChild size="sm">
+              <Link href={`/productos/${suggestedProduct.slug}`}>Ver ahora</Link>
+            </Button>
+          </div>
+        ) : null}
         </div>
       </div>
 
