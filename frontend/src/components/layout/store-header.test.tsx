@@ -32,7 +32,9 @@ describe("StoreHeader", () => {
       "freestyle.cart.v1",
       JSON.stringify({
         version: 1,
-        items: [{ productId: "1", slug: "test", name: "Test", price: 100, currency: "ARS", quantity: 2 }],
+        items: [
+          { productId: "1", slug: "test", name: "Test", price: 100, currency: "ARS", quantity: 2 },
+        ],
       }),
     )
 
@@ -43,8 +45,14 @@ describe("StoreHeader", () => {
     expect(screen.getByRole("link", { name: /buscar/i })).toHaveAttribute("href", "/buscar")
 
     fireEvent.click(screen.getByRole("button", { name: /cuenta/i }))
-    expect(screen.getByRole("menuitem", { name: /iniciar sesion/i })).toHaveAttribute("href", "/login")
-    expect(screen.getByRole("menuitem", { name: /crear cuenta/i })).toHaveAttribute("href", "/registro")
+    expect(await screen.findByRole("menuitem", { name: /iniciar sesión/i })).toHaveAttribute(
+      "href",
+      "/login",
+    )
+    expect(screen.getByRole("menuitem", { name: /crear cuenta/i })).toHaveAttribute(
+      "href",
+      "/registro",
+    )
 
     expect(await screen.findByRole("link", { name: /carrito, 2 productos/i })).toHaveAttribute(
       "href",
@@ -63,8 +71,16 @@ describe("StoreHeader", () => {
     fireEvent.click(screen.getByRole("button", { name: /cuenta, admin@zeqebellino.com/i }))
 
     expect(screen.getByRole("menuitem", { name: /mi perfil/i })).toHaveAttribute("href", "/perfil")
-    expect(screen.getByRole("menuitem", { name: /historial de compras/i })).toHaveAttribute("href", "/perfil#pedidos")
-    expect(screen.getByRole("menuitem", { name: /panel administrador/i })).toHaveAttribute("href", "/admin")
-    expect(screen.getByRole("menuitem", { name: /cerrar sesion/i })).toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: /historial de compras/i })).toHaveAttribute(
+      "href",
+      "/perfil#pedidos",
+    )
+    expect(screen.getByRole("menuitem", { name: /panel administrador/i })).toHaveAttribute(
+      "href",
+      "/admin",
+    )
+    expect(screen.getByRole("menuitem", { name: /cerrar sesión/i })).toBeInTheDocument()
+    expect(screen.queryByRole("menuitem", { name: /iniciar sesión/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("menuitem", { name: /crear cuenta/i })).not.toBeInTheDocument()
   })
 })
