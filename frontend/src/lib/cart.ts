@@ -27,16 +27,46 @@ export const emptyCartState: CartState = {
   items: [],
 }
 
+function productVariantAttribute(
+  product: Product,
+  variantId: string | undefined,
+  attributeNames: string[],
+) {
+  const variant = variantId
+    ? product.variants.find((productVariant) => productVariant.id === variantId) ??
+      product.variants.find((productVariant) => productVariant.label === variantId)
+    : undefined
+
+  if (!variant) return undefined
+
+  for (const attributeName of attributeNames) {
+    const value = variant.attributes[attributeName]
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return undefined
+}
+
 export function productToCartItem(product: Product, variantId?: string): CartItem {
   const variant = variantId
-    ? product.variants.find((productVariant) => productVariant.id === variantId)
-      ?? product.variants.find((productVariant) => productVariant.label === variantId)
+    ? product.variants.find((productVariant) => productVariant.id === variantId) ??
+      product.variants.find((productVariant) => productVariant.label === variantId)
     : undefined
   const key = variant ? `${product.slug}:${variant.id ?? variant.label}` : product.slug
-  const variantColor =
-    variant && typeof variant.attributes.color === "string" ? variant.attributes.color : undefined
-  const variantSize =
-    variant && typeof variant.attributes.talle === "string" ? variant.attributes.talle : undefined
+  const variantColor = productVariantAttribute(product, variantId, [
+    "color",
+    "colour",
+    "color_nombre",
+  ])
+  const variantSize = productVariantAttribute(product, variantId, [
+    "talle",
+    "numero",
+    "size",
+    "medida",
+  ])
+
   return {
     key,
     productId: product.id,
@@ -121,12 +151,10 @@ export function formatCartPrice(value: number) {
 }
 
 export function buildReservationMessage(items: CartItem[], total: number) {
-  const lines = items.map(
-    (item) => {
-      const variantDescription = cartItemVariantDescription(item)
-      return `- ${item.name}${variantDescription ? ` / ${variantDescription}` : ""} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`
-    },
-  )
+  const lines = items.map((item) => {
+    const variantDescription = cartItemVariantDescription(item)
+    return `- ${item.name}${variantDescription ? ` / ${variantDescription}` : ""} x${item.quantity} (${formatCartPrice(item.price * item.quantity)})`
+  })
 
   return [
     "Hola FreeStyle, quiero consultar o reservar estos productos:",

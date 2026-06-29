@@ -41,15 +41,17 @@ export type OrderRead = {
     quantity: number
     line_total: string | number
     currency: string
-    attributes?: {
-      category?: string | null
-      brand?: string | null
-      variant_id?: string | null
-      variant_label?: string | null
-      variant_color?: string | null
-      variant_size?: string | null
-      variant_display?: string | null
-    } | Record<string, unknown>
+    attributes?:
+      | {
+          category?: string | null
+          brand?: string | null
+          variant_id?: string | null
+          variant_label?: string | null
+          variant_color?: string | null
+          variant_size?: string | null
+          variant_display?: string | null
+        }
+      | Record<string, unknown>
   }>
 }
 
