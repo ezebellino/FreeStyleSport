@@ -1,6 +1,6 @@
 import Link from "next/link"
 
-import { ProductCard } from "@/components/products/product-card"
+import { ProductCatalog } from "@/components/products/product-catalog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { demoProducts, fetchProducts } from "@/lib/products"
@@ -13,7 +13,7 @@ export default async function ProductsPage({
   let isDemo = true
 
   try {
-    const apiProducts = await fetchProducts({ category: categoria, audience: linea })
+    const apiProducts = await fetchProducts()
     if (apiProducts.length > 0) {
       products = apiProducts
       isDemo = false
@@ -50,11 +50,7 @@ export default async function ProductsPage({
         </div>
       ) : null}
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      <ProductCatalog products={products} initialCategory={categoria ?? ""} initialAudience={linea ?? ""} />
     </section>
   )
 }
