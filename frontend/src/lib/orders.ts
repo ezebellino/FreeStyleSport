@@ -1,5 +1,9 @@
 import { publicApiUrl } from "./api"
 
+export const FREE_SHIPPING_THRESHOLD = 100000
+export const GIFT_BONUS_THRESHOLD = 200000
+export const GIFT_BONUS_CODE = "PROXIMA10"
+
 export type OrderCreatePayload = {
   customer_name?: string
   customer_email?: string
@@ -75,6 +79,15 @@ export function orderItemVariantDescription(item: OrderRead["items"][number]) {
   ].filter(Boolean)
 
   return parts.length > 0 ? parts.join(" · ") : orderAttributeText(item, "variant_label")
+}
+
+export function hasFreeShippingBenefit(order: OrderRead) {
+  return order.metadata?.free_shipping === true
+}
+
+export function orderGiftCouponCode(order: OrderRead) {
+  const code = order.metadata?.gift_coupon_code
+  return typeof code === "string" && code.trim() ? code.trim() : null
 }
 
 export async function createStoreOrder(payload: OrderCreatePayload): Promise<OrderRead> {

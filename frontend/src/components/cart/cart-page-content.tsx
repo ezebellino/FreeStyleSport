@@ -28,8 +28,13 @@ import { getCurrentUser, type PublicUser } from "@/lib/auth"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
 import {
   createStoreOrder,
+  FREE_SHIPPING_THRESHOLD,
+  GIFT_BONUS_CODE,
+  GIFT_BONUS_THRESHOLD,
+  hasFreeShippingBenefit,
   listMyOrders,
   orderItemVariantDescription,
+  orderGiftCouponCode,
   type OrderCreatePayload,
   type OrderRead,
 } from "@/lib/orders"
@@ -156,6 +161,7 @@ function fulfillmentInstruction(fulfillmentMethod: OrderCreatePayload["fulfillme
 }
 
 function buildOrderConfirmationMessage(order: OrderRead) {
+  const giftCouponCode = orderGiftCouponCode(order)
   const itemLines = order.items
     .map((item) => {
       const variantDescription = orderItemVariantDescription(item)
@@ -169,8 +175,10 @@ function buildOrderConfirmationMessage(order: OrderRead) {
     itemLines,
     "",
     `Total: ${formatCartPrice(Number(order.total))}`,
+    hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
+    giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
     "Quedo atento/a para confirmar pago y disponibilidad.",
-  ].join("\n")
+  ].filter(Boolean).join("\n")
 }
 
 export function CartPageContent() {
@@ -204,6 +212,10 @@ export function CartPageContent() {
     ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
   const welcomeDiscount = isWelcomeDiscountEligible ? Math.round(total * 0.1) : 0
   const checkoutTotal = Math.max(0, total - welcomeDiscount)
+  const hasFreeShippingPreview = checkoutTotal > FREE_SHIPPING_THRESHOLD
+  const hasGiftBonusPreview = checkoutTotal > GIFT_BONUS_THRESHOLD
+  const freeShippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - checkoutTotal + 1)
+  const giftBonusRemaining = Math.max(0, GIFT_BONUS_THRESHOLD - checkoutTotal + 1)
 
   useEffect(() => {
     let isMounted = true
@@ -302,6 +314,7 @@ export function CartPageContent() {
 
   if (createdOrder) {
     const code = orderCode(createdOrder.id)
+    const giftCouponCode = orderGiftCouponCode(createdOrder)
 
     return (
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col justify-center gap-6 px-4 py-16 md:px-8">
@@ -351,6 +364,16 @@ export function CartPageContent() {
               {createdOrder.metadata?.coupon_code === "BIENVENIDA10" ? (
                 <p className="mt-1 text-xs font-bold text-primary">
                   Incluye 10% de bienvenida aplicado.
+                </p>
+              ) : null}
+              {hasFreeShippingBenefit(createdOrder) ? (
+                <p className="mt-1 text-xs font-bold text-primary">
+                  Incluye envío gratis por superar {formatCartPrice(FREE_SHIPPING_THRESHOLD)}.
+                </p>
+              ) : null}
+              {giftCouponCode ? (
+                <p className="mt-1 text-xs font-bold text-primary">
+                  Ganaste un bono 10% para tu próxima compra: {giftCouponCode}.
                 </p>
               ) : null}
             </div>
@@ -567,9 +590,46 @@ export function CartPageContent() {
                 Creá una cuenta para activar el 10% de bienvenida en tu primera compra.
               </p>
             )}
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              El total no incluye envío. Si elegís envío, el local lo confirma antes de cerrar.
-            </p>
+            <div className="mt-3 grid gap-2">
+              <div
+                className={`rounded-2xl border p-3 ${
+                  hasFreeShippingPreview
+                    ? "border-primary/35 bg-primary/10"
+                    : "bg-background/55"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 text-sm font-black">
+                  <span>Envío gratis</span>
+                  <Badge variant={hasFreeShippingPreview ? "default" : "secondary"}>
+                    {hasFreeShippingPreview ? "Activado" : `Superá ${formatCartPrice(FREE_SHIPPING_THRESHOLD)}`}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {hasFreeShippingPreview
+                    ? "Tu compra supera el mínimo y el local coordina el envío sin costo."
+                    : `Te faltan ${formatCartPrice(freeShippingRemaining)} para activar envío gratis.`}
+                </p>
+              </div>
+              <div
+                className={`rounded-2xl border p-3 ${
+                  hasGiftBonusPreview
+                    ? "border-primary/35 bg-primary/10"
+                    : "bg-background/55"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 text-sm font-black">
+                  <span>Bono de regalo 10%</span>
+                  <Badge variant={hasGiftBonusPreview ? "default" : "secondary"}>
+                    {hasGiftBonusPreview ? "Ganado" : `Superá ${formatCartPrice(GIFT_BONUS_THRESHOLD)}`}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {hasGiftBonusPreview
+                    ? `Al crear la reserva queda registrado el bono ${GIFT_BONUS_CODE} para tu próxima compra.`
+                    : `Te faltan ${formatCartPrice(giftBonusRemaining)} para recibir un bono 10%.`}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 

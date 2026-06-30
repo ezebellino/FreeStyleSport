@@ -18,7 +18,14 @@ import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatCartPrice } from "@/lib/cart"
-import { getStoreOrder, orderItemVariantDescription, type OrderRead } from "@/lib/orders"
+import {
+  FREE_SHIPPING_THRESHOLD,
+  getStoreOrder,
+  hasFreeShippingBenefit,
+  orderGiftCouponCode,
+  orderItemVariantDescription,
+  type OrderRead,
+} from "@/lib/orders"
 import { getPaymentProfile } from "@/lib/payment-profile"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
@@ -221,6 +228,8 @@ export default async function OrderTrackingPage({
       : typeof order.metadata?.discount_total === "number"
         ? order.metadata.discount_total
         : 0
+  const hasFreeShipping = hasFreeShippingBenefit(order)
+  const giftCouponCode = orderGiftCouponCode(order)
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
@@ -466,9 +475,28 @@ export default async function OrderTrackingPage({
               </div>
             ) : null}
             <p className="mt-1 text-3xl font-black">{formatCartPrice(Number(order.total))}</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              El envío, si corresponde, se coordina con el local antes de cerrar la compra.
-            </p>
+            <div className="mt-3 grid gap-2">
+              {hasFreeShipping ? (
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3 text-xs leading-5">
+                  <p className="font-black text-primary">Envío gratis incluido</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Beneficio aplicado por superar {formatCartPrice(FREE_SHIPPING_THRESHOLD)}.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  El envío, si corresponde, se coordina con el local antes de cerrar la compra.
+                </p>
+              )}
+              {giftCouponCode ? (
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3 text-xs leading-5">
+                  <p className="font-black text-primary">Bono para próxima compra</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Usá {giftCouponCode} para consultar tu 10% en la próxima compra.
+                  </p>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
