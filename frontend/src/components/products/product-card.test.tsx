@@ -23,8 +23,10 @@ describe("ProductCard", () => {
     expect(screen.getByText(/hombre/i)).toBeInTheDocument()
     expect(screen.getByText(/ropa/i)).toBeInTheDocument()
     expect(screen.getByText(/\$ 28\.900/i)).toBeInTheDocument()
+    expect(screen.getByText(/-17%/i)).toBeInTheDocument()
+    expect(screen.getByText(/2 opciones disponibles/i)).toBeInTheDocument()
     expect(screen.getByText(/talles: m, l/i)).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: /ver producto/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /ver talles y comprar/i })).toHaveAttribute(
       "href",
       "/productos/remera-training-oversize",
     )
