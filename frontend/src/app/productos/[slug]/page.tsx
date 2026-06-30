@@ -47,6 +47,12 @@ const purchaseBenefits = [
   },
 ] as const
 
+const paymentHighlights = [
+  "20% con Cuenta DNI de lunes a viernes",
+  "4 cuotas sin interés viernes y sábados",
+  "Promos especiales abonando en efectivo",
+] as const
+
 async function fetchProduct(slug: string): Promise<Product | null> {
   try {
     const response = await fetch(`${publicApiUrl}/commerce/products/${slug}`, { cache: "no-store" })
@@ -123,6 +129,10 @@ export default async function ProductDetailPage({
   const stock = totalStock(product)
   const discount = discountPercent(product)
   const groupedVariants = variantGroups(product)
+  const availableVariantCount = product.variants.filter(
+    (productVariant) => productVariant.stock_quantity > 0,
+  ).length
+  const isLowStock = stock > 0 && stock <= 2
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
@@ -145,9 +155,10 @@ export default async function ProductDetailPage({
                   {categoryLabel}
                 </Badge>
               ) : null}
-              {discount ? <Badge variant="secondary">{discount}% OFF</Badge> : null}
+              {discount ? <Badge className="font-black">-{discount}%</Badge> : null}
+              {isLowStock ? <Badge variant="destructive">Últimos disponibles</Badge> : null}
               <Badge variant={stock > 0 ? "secondary" : "destructive"}>
-                {stock > 0 ? `${stock} disponibles` : "Sin stock"}
+                {stock > 0 ? `${stock} unidades disponibles` : "Sin stock"}
               </Badge>
             </div>
 
@@ -179,12 +190,31 @@ export default async function ProductDetailPage({
                   </p>
                 ) : null}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Elegí color y talle antes de agregarlo al carrito.
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {paymentHighlights.map((highlight) => (
+                  <div key={highlight} className="rounded-2xl border bg-background/50 p-3">
+                    <p className="text-xs font-bold leading-5 text-primary">{highlight}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Elegí color y talle antes de agregarlo al carrito. El pedido queda registrado para
+                coordinar pago, retiro o envío.
               </p>
             </div>
 
             <div className="mt-5">
+              <div className="mb-3 rounded-3xl border border-primary/30 bg-primary/10 p-4">
+                <p className="text-sm font-black text-primary">
+                  {stock > 0
+                    ? `${availableVariantCount} combinaciones listas para reservar o comprar.`
+                    : "Este producto está sin stock por ahora."}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Seleccioná una variante disponible y agregala al carrito para avanzar con la
+                  reserva.
+                </p>
+              </div>
               <AddToCartButton product={product} className="rounded-3xl border bg-background/55 p-4" />
             </div>
           </div>
