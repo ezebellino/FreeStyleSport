@@ -16,6 +16,7 @@ import {
   TruckIcon,
   UserIcon,
 } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import Link from "next/link"
 import { type FormEvent, useEffect, useMemo, useState } from "react"
 
@@ -92,6 +93,19 @@ const fulfillmentOptions: Array<{
     description: "Reservás y abonás al retirar.",
   },
 ]
+
+const itemMotion = {
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, x: -16 },
+  transition: { duration: 0.22, ease: "easeOut" },
+} as const
+
+const panelMotion = {
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.28, ease: "easeOut" },
+} as const
 
 function buildWhatsAppHref(message: string) {
   if (!whatsappNumber) {
@@ -378,8 +392,9 @@ export function CartPageContent() {
           </div>
         </div>
 
-        <div className="space-y-3">
-          {items.map((item) => {
+        <motion.div className="space-y-3" {...panelMotion}>
+          <AnimatePresence initial={false}>
+            {items.map((item) => {
             const variantText = [
               item.variantColor ? `Color: ${item.variantColor}` : null,
               item.variantSize ? `Talle: ${item.variantSize}` : null,
@@ -388,8 +403,10 @@ export function CartPageContent() {
               .join(" · ")
 
             return (
-              <article
+              <motion.article
                 key={item.key}
+                layout
+                {...itemMotion}
                 className="grid gap-4 rounded-3xl border bg-card p-4 shadow-sm sm:grid-cols-[7rem_1fr_auto]"
               >
                 <Link
@@ -457,13 +474,17 @@ export function CartPageContent() {
                     <Trash2Icon data-icon="inline-start" />
                   </Button>
                 </div>
-              </article>
+              </motion.article>
             )
-          })}
-        </div>
+            })}
+          </AnimatePresence>
+        </motion.div>
       </div>
 
-      <aside className="h-fit space-y-4 rounded-[2rem] border bg-card p-5 shadow-sm lg:sticky lg:top-24">
+      <motion.aside
+        className="h-fit space-y-4 rounded-[2rem] border bg-card p-5 shadow-sm lg:sticky lg:top-24"
+        {...panelMotion}
+      >
         <div className="space-y-3">
           <h2 className="text-2xl font-black">Resumen del pedido</h2>
           <div className="rounded-2xl border bg-secondary/40 p-4">
@@ -479,6 +500,14 @@ export function CartPageContent() {
               El total no incluye envío. Si elegís envío, el local lo confirma antes de cerrar.
             </p>
           </div>
+        </div>
+
+        <div className="grid gap-2 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs leading-5">
+          <p className="font-black text-primary">Antes de preparar el pedido</p>
+          <p className="text-muted-foreground">
+            El local valida stock, confirma el medio de pago y recién después avanza con entrega o
+            retiro.
+          </p>
         </div>
 
         <form className="space-y-4" onSubmit={submitOrder}>
@@ -651,7 +680,7 @@ export function CartPageContent() {
         <Button asChild className="w-full" variant="outline">
           <Link href="/ayuda">Ver servicios y condiciones</Link>
         </Button>
-      </aside>
+      </motion.aside>
     </section>
   )
 }
