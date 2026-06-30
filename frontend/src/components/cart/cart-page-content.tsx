@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { getCurrentUser, type PublicUser } from "@/lib/auth"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
 import {
+  createMercadoPagoPreference,
   createStoreOrder,
   FREE_SHIPPING_THRESHOLD,
   GIFT_BONUS_CODE,
@@ -201,6 +202,7 @@ export function CartPageContent() {
   const [paymentProofUrl, setPaymentProofUrl] = useState("")
   const [notes, setNotes] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCreatingMercadoPagoPayment, setIsCreatingMercadoPagoPayment] = useState(false)
   const [createdOrder, setCreatedOrder] = useState<OrderRead | null>(null)
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null)
   const [currentUser, setCurrentUser] = useState<PublicUser | null>(null)
@@ -324,6 +326,23 @@ export function CartPageContent() {
     }
   }
 
+  async function startMercadoPagoPayment(orderId: string) {
+    setIsCreatingMercadoPagoPayment(true)
+    setError(null)
+    try {
+      const preference = await createMercadoPagoPreference(orderId)
+      window.location.href = preference.init_point
+    } catch (paymentError) {
+      setError(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "No pudimos abrir Mercado Pago",
+      )
+    } finally {
+      setIsCreatingMercadoPagoPayment(false)
+    }
+  }
+
   if (createdOrder) {
     const code = orderCode(createdOrder.id)
     const giftCouponCode = orderGiftCouponCode(createdOrder)
@@ -413,6 +432,18 @@ export function CartPageContent() {
               </a>
             </Button>
           ) : null}
+          {createdOrder.payment_method === "mercado_pago" ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isCreatingMercadoPagoPayment}
+              onClick={() => void startMercadoPagoPayment(createdOrder.id)}
+            >
+              <CreditCardIcon data-icon="inline-start" />
+              {isCreatingMercadoPagoPayment ? "Abriendo Mercado Pago..." : "Pagar con Mercado Pago"}
+            </Button>
+          ) : null}
+          {error ? <p className="basis-full text-sm text-destructive">{error}</p> : null}
           <Button asChild>
             <Link href="/productos">Seguir viendo productos</Link>
           </Button>

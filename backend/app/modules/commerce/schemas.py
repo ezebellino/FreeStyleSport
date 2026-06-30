@@ -194,6 +194,16 @@ class OrderUpdate(BaseModel):
     payment_status: PaymentStatus | None = None
 
 
+class MercadoPagoPreferenceRead(BaseModel):
+    preference_id: str
+    init_point: str
+    sandbox_init_point: str | None = None
+
+
+class MercadoPagoWebhookRead(BaseModel):
+    received: bool = True
+
+
 class CloudinarySignatureRead(BaseModel):
     cloud_name: str
     api_key: str

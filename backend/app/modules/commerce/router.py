@@ -10,6 +10,8 @@ from app.core.errors import ApiError
 from app.db.session import get_session
 from app.modules.commerce.schemas import (
     CloudinarySignatureRead,
+    MercadoPagoPreferenceRead,
+    MercadoPagoWebhookRead,
     OrderCreate,
     OrderRead,
     OrderUpdate,
@@ -20,8 +22,11 @@ from app.modules.commerce.schemas import (
     ProductUpdate,
 )
 from app.modules.commerce.service import (
+    apply_mercado_pago_payment,
+    create_mercado_pago_preference,
     create_order,
     create_product,
+    get_mercado_pago_payment,
     get_order_by_id,
     get_payment_profile,
     get_public_product_by_slug,
@@ -32,6 +37,7 @@ from app.modules.commerce.service import (
     update_order,
     update_payment_profile,
     update_product,
+    validate_mercado_pago_webhook_signature,
 )
 from app.modules.identity.audit import record_audit_event
 from app.modules.identity.schemas import PublicUser
@@ -140,6 +146,43 @@ async def order_create(
 @router.get("/orders/{order_id}", response_model=OrderRead)
 async def order_detail(order_id: str, session: SessionDependency) -> OrderRead:
     return await get_order_by_id(session, order_id)
+
+
+@router.post("/orders/{order_id}/mercado-pago/preference", response_model=MercadoPagoPreferenceRead)
+async def order_mercado_pago_preference(
+    order_id: str,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> MercadoPagoPreferenceRead:
+    return await create_mercado_pago_preference(session, order_id, settings)
+
+
+@router.post("/webhooks/mercado-pago", response_model=MercadoPagoWebhookRead)
+async def mercado_pago_webhook(
+    request: Request,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> MercadoPagoWebhookRead:
+    payload = await request.json()
+    data = payload.get("data") if isinstance(payload, dict) else None
+    payment_id = data.get("id") if isinstance(data, dict) else None
+    if not payment_id:
+        payment_id = request.query_params.get("data.id") or request.query_params.get("id")
+    if not payment_id:
+        return MercadoPagoWebhookRead(received=True)
+
+    is_valid_signature = validate_mercado_pago_webhook_signature(
+        signature_header=request.headers.get("x-signature"),
+        request_id=request.headers.get("x-request-id"),
+        data_id=str(payment_id),
+        secret=settings.mercado_pago_webhook_secret,
+    )
+    if not is_valid_signature:
+        raise ApiError(401, "invalid_mercado_pago_signature", "Webhook de Mercado Pago invalido")
+
+    payment = await get_mercado_pago_payment(str(payment_id), settings)
+    await apply_mercado_pago_payment(session, payment)
+    return MercadoPagoWebhookRead(received=True)
 
 
 @router.get("/my/orders", response_model=list[OrderRead])

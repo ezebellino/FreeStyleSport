@@ -24,6 +24,7 @@ import {
   hasFreeShippingBenefit,
   orderGiftCouponCode,
   orderItemVariantDescription,
+  orderMercadoPagoInitPoint,
   orderPaymentProofUrl,
   orderPaymentReference,
   type OrderRead,
@@ -234,6 +235,7 @@ export default async function OrderTrackingPage({
   const giftCouponCode = orderGiftCouponCode(order)
   const paymentReference = orderPaymentReference(order)
   const paymentProofUrl = orderPaymentProofUrl(order)
+  const mercadoPagoInitPoint = orderMercadoPagoInitPoint(order)
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
@@ -460,6 +462,20 @@ export default async function OrderTrackingPage({
                   El local revisa el pago antes de preparar el pedido.
                 </p>
               ) : null}
+            </div>
+          ) : null}
+
+          {mercadoPagoInitPoint && order.payment_status !== "paid" ? (
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm leading-6">
+              <p className="font-black text-primary">Pago online disponible</p>
+              <p className="mt-1 text-muted-foreground">
+                Podés completar el pago de esta reserva en Mercado Pago.
+              </p>
+              <Button asChild className="mt-3 w-full">
+                <a href={mercadoPagoInitPoint} target="_blank" rel="noreferrer">
+                  Pagar con Mercado Pago
+                </a>
+              </Button>
             </div>
           ) : null}
 

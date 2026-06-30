@@ -29,11 +29,14 @@ class Settings(BaseSettings):
     resend_api_key: str | None = None
     email_from: str = "FreeStyle <onboarding@resend.dev>"
     public_app_url: str = "http://localhost:3000"
+    public_api_url: str = "http://localhost:8000"
     email_confirmation_ttl_seconds: int = 60 * 60 * 24
     cloudinary_cloud_name: str | None = None
     cloudinary_api_key: str | None = None
     cloudinary_api_secret: str | None = None
     cloudinary_upload_folder: str = "freestyle/products"
+    mercado_pago_access_token: str | None = None
+    mercado_pago_webhook_secret: str | None = None
 
     @field_validator("database_url", mode="before")
     @classmethod
