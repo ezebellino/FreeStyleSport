@@ -81,6 +81,7 @@ export async function createStoreOrder(payload: OrderCreatePayload): Promise<Ord
   const response = await fetch(`${publicApiUrl}/commerce/orders`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(payload),
   })
 

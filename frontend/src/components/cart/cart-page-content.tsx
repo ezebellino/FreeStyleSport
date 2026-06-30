@@ -28,6 +28,7 @@ import { getCurrentUser, type PublicUser } from "@/lib/auth"
 import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
 import {
   createStoreOrder,
+  listMyOrders,
   orderItemVariantDescription,
   type OrderCreatePayload,
   type OrderRead,
@@ -186,6 +187,8 @@ export function CartPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [createdOrder, setCreatedOrder] = useState<OrderRead | null>(null)
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null)
+  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null)
+  const [isWelcomeDiscountEligible, setIsWelcomeDiscountEligible] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const message = useMemo(() => buildReservationMessage(items, total), [items, total])
   const whatsappHref = buildWhatsAppHref(message)
@@ -199,6 +202,8 @@ export function CartPageContent() {
   const shouldShowPaymentProfile =
     Boolean(paymentProfile?.is_active) &&
     ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
+  const welcomeDiscount = isWelcomeDiscountEligible ? Math.round(total * 0.1) : 0
+  const checkoutTotal = Math.max(0, total - welcomeDiscount)
 
   useEffect(() => {
     let isMounted = true
@@ -206,11 +211,27 @@ export function CartPageContent() {
     getCurrentUser()
       .then((user) => {
         if (isMounted && user) {
+          setCurrentUser(user)
           const displayName = userDisplayName(user)
           setCustomerName((currentName) => currentName || displayName)
           setCustomerPhone((currentPhone) => currentPhone || user.phone || "")
           setCustomerEmail((currentEmail) => currentEmail || user.email)
         }
+        if (isMounted && !user) {
+          setCurrentUser(null)
+          setIsWelcomeDiscountEligible(false)
+        }
+        return user
+      })
+      .then((user) => {
+        if (!user || user.role !== "customer") {
+          return undefined
+        }
+        return listMyOrders().then((orders) => {
+          if (isMounted) {
+            setIsWelcomeDiscountEligible(orders.length === 0)
+          }
+        })
       })
       .catch(() => undefined)
 
@@ -270,6 +291,7 @@ export function CartPageContent() {
         })),
       })
       setCreatedOrder(order)
+      setIsWelcomeDiscountEligible(false)
       clearCart()
     } catch (orderError) {
       setError(orderError instanceof Error ? orderError.message : "No pudimos crear la reserva")
@@ -326,6 +348,11 @@ export function CartPageContent() {
             <div>
               <p className="text-sm font-semibold">Total estimado</p>
               <p className="text-2xl font-black">{formatCartPrice(Number(createdOrder.total))}</p>
+              {createdOrder.metadata?.coupon_code === "BIENVENIDA10" ? (
+                <p className="mt-1 text-xs font-bold text-primary">
+                  Incluye 10% de bienvenida aplicado.
+                </p>
+              ) : null}
             </div>
             <Badge variant={createdOrder.payment_status === "paid" ? "default" : "secondary"}>
               Pago pendiente de confirmación
@@ -515,8 +542,31 @@ export function CartPageContent() {
             </div>
             <div className="mt-2 flex justify-between text-lg font-black">
               <span>Total estimado</span>
-              <span>{formatCartPrice(total)}</span>
+              <span>{formatCartPrice(checkoutTotal)}</span>
             </div>
+            {isWelcomeDiscountEligible ? (
+              <div className="mt-3 rounded-2xl border border-primary/30 bg-primary/10 p-3">
+                <div className="mb-2 flex justify-between gap-3 text-xs text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>{formatCartPrice(total)}</span>
+                </div>
+                <div className="flex justify-between gap-3 text-sm font-black text-primary">
+                  <span>Bienvenida 10%</span>
+                  <span>-{formatCartPrice(welcomeDiscount)}</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Cupón BIENVENIDA10 aplicado automáticamente por ser tu primera compra con cuenta.
+                </p>
+              </div>
+            ) : currentUser ? (
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                El cupón de bienvenida se usa una sola vez por cuenta.
+              </p>
+            ) : (
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Creá una cuenta para activar el 10% de bienvenida en tu primera compra.
+              </p>
+            )}
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               El total no incluye envío. Si elegís envío, el local lo confirma antes de cerrar.
             </p>

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,9 @@ from app.modules.commerce.schemas import (
 )
 
 DEFAULT_TENANT_SLUG = "freestyle"
+WELCOME_COUPON_CODE = "BIENVENIDA10"
+WELCOME_DISCOUNT_RATE = Decimal("0.10")
+MONEY_QUANT = Decimal("0.01")
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
 PAID_REQUIRED_ORDER_STATUSES = {"preparing", "ready", "delivered"}
 STOCK_RELEASING_ORDER_STATUSES = {"cancelled"}
@@ -166,6 +170,43 @@ def _set_order_stock_reserved(order: Order, is_reserved: bool) -> None:
         **(order.order_metadata or {}),
         "stock_reserved": is_reserved,
     }
+
+
+def _money(value: Decimal) -> Decimal:
+    return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+
+
+async def _welcome_discount_for_customer(
+    session: AsyncSession,
+    tenant: Tenant,
+    customer_email: str | None,
+    subtotal: Decimal,
+) -> Decimal:
+    if not customer_email or subtotal <= 0:
+        return Decimal("0.00")
+
+    existing_order_id = await session.scalar(
+        select(Order.id)
+        .where(Order.tenant_id == tenant.id, Order.customer_email == customer_email.lower())
+        .limit(1)
+    )
+    return calculate_welcome_discount(
+        has_existing_order=existing_order_id is not None,
+        customer_email=customer_email,
+        subtotal=subtotal,
+    )
+
+
+def calculate_welcome_discount(
+    *,
+    has_existing_order: bool,
+    customer_email: str | None,
+    subtotal: Decimal,
+) -> Decimal:
+    if not customer_email or subtotal <= 0 or has_existing_order:
+        return Decimal("0.00")
+
+    return _money(subtotal * WELCOME_DISCOUNT_RATE)
 
 
 def _order_variant_quantities(order: Order) -> dict[str, int]:
@@ -426,7 +467,11 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
     return product
 
 
-async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
+async def create_order(
+    session: AsyncSession,
+    payload: OrderCreate,
+    registered_customer_email: str | None = None,
+) -> Order:
     tenant = await get_or_create_default_tenant(session)
     requested_quantities: dict[tuple[str, str | None], int] = {}
     item_details: dict[tuple[str, str | None], OrderItemCreate] = {}
@@ -535,20 +580,46 @@ async def create_order(session: AsyncSession, payload: OrderCreate) -> Order:
             )
         )
 
+    effective_customer_email = (
+        registered_customer_email.lower()
+        if registered_customer_email
+        else payload.customer_email.lower()
+        if payload.customer_email
+        else None
+    )
+    welcome_discount = await _welcome_discount_for_customer(
+        session,
+        tenant,
+        registered_customer_email,
+        subtotal,
+    )
+    total = _money(subtotal - welcome_discount)
+    order_metadata: dict[str, object] = {"source": "storefront_cart"}
+    if welcome_discount > 0:
+        order_metadata.update(
+            {
+                "coupon_code": WELCOME_COUPON_CODE,
+                "discount_label": "Bienvenida 10%",
+                "discount_rate": float(WELCOME_DISCOUNT_RATE),
+                "discount_total": str(welcome_discount),
+                "discount_kind": "welcome_first_order",
+            }
+        )
+
     order = Order(
         tenant_id=tenant.id,
         status="pending",
         payment_status="unpaid",
         customer_name=payload.customer_name,
-        customer_email=payload.customer_email,
+        customer_email=effective_customer_email,
         customer_phone=payload.customer_phone,
         payment_method=payload.payment_method,
         fulfillment_method=payload.fulfillment_method,
         notes=payload.notes,
         subtotal=subtotal,
-        total=subtotal,
+        total=total,
         currency=currency,
-        order_metadata={"source": "storefront_cart"},
+        order_metadata=order_metadata,
     )
     order.items = order_items
     session.add(order)
