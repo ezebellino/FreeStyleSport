@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     session_cookie_name: str = "fs_session"
     csrf_cookie_name: str = "fs_csrf"
     cookie_domain: str | None = None
-    session_ttl_seconds: int = 60 * 60 * 24 * 7
+    session_ttl_seconds: int = 60 * 60
     csrf_header_name: str = "x-csrf-token"
     resend_api_key: str | None = None
     email_from: str = "FreeStyle <onboarding@resend.dev>"
@@ -47,6 +47,15 @@ class Settings(BaseSettings):
         if value.startswith("postgres://"):
             return value.replace("postgres://", "postgresql+psycopg://", 1)
         raise ValueError("unsupported database URL scheme; PostgreSQL is required")
+
+    @field_validator("session_ttl_seconds")
+    @classmethod
+    def validate_session_ttl(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("session TTL must be positive")
+        if value > 60 * 60:
+            raise ValueError("session TTL cannot exceed 60 minutes")
+        return value
 
     @property
     def allowed_origins(self) -> list[str]:
