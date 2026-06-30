@@ -1,6 +1,6 @@
 "use client"
 
-import { CreditCardIcon, QrCodeIcon, RefreshCwIcon, SaveIcon } from "lucide-react"
+import { CreditCardIcon, QrCodeIcon, RefreshCwIcon, SaveIcon, UploadIcon } from "lucide-react"
 import { type FormEvent, useEffect, useState } from "react"
 
 import { ProductImage } from "@/components/products/product-image"
@@ -13,6 +13,7 @@ import {
   updateAdminPaymentProfile,
   type PaymentProfile,
 } from "@/lib/payment-profile"
+import { uploadAdminProductImage } from "@/lib/products"
 
 const emptyProfile: PaymentProfile = {
   alias: "",
@@ -28,6 +29,7 @@ export function PaymentProfilePanel() {
   const [profile, setProfile] = useState<PaymentProfile>(emptyProfile)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingQr, setIsUploadingQr] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function loadProfile() {
@@ -52,6 +54,33 @@ export function PaymentProfilePanel() {
 
   function updateField(field: keyof PaymentProfile, value: string | boolean) {
     setProfile((current) => ({ ...current, [field]: value }))
+  }
+
+  async function handleQrUpload(file: File | null) {
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      const message = "El QR tiene que ser una imagen."
+      setError(message)
+      void showError("No pudimos subir el QR", message)
+      return
+    }
+
+    setError(null)
+    setIsUploadingQr(true)
+    try {
+      const uploaded = await uploadAdminProductImage(file)
+      updateField("qr_image_url", uploaded.url)
+      void showSuccess("QR subido", "La URL del QR quedó cargada en los datos de pago.")
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "No pudimos subir el QR"
+      setError(message)
+      void showError("No pudimos subir el QR", message)
+    } finally {
+      setIsUploadingQr(false)
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -166,6 +195,33 @@ export function PaymentProfilePanel() {
             />
           </label>
 
+          <div className="space-y-2 rounded-2xl border bg-background/45 p-4 sm:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Subir QR desde la PC</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Seleccioná una imagen y la subimos a Cloudinary automáticamente.
+                </p>
+              </div>
+              <Button asChild type="button" variant="secondary" disabled={isUploadingQr}>
+                <label className="cursor-pointer">
+                  <UploadIcon data-icon="inline-start" />
+                  {isUploadingQr ? "Subiendo..." : "Elegir imagen"}
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="image/*"
+                    disabled={isUploadingQr}
+                    onChange={(event) => {
+                      void handleQrUpload(event.target.files?.[0] ?? null)
+                      event.target.value = ""
+                    }}
+                  />
+                </label>
+              </Button>
+            </div>
+          </div>
+
           <label className="space-y-2 sm:col-span-2">
             <span className="text-sm font-semibold">Instrucciones para el cliente</span>
             <textarea
@@ -223,7 +279,7 @@ export function PaymentProfilePanel() {
             {profile.instructions ||
               "Acá se verá la instrucción que recibirá el cliente para completar el pago."}
           </p>
-          <Button className="w-full" type="submit" disabled={isSaving}>
+          <Button className="w-full" type="submit" disabled={isSaving || isUploadingQr}>
             <SaveIcon data-icon="inline-start" />
             {isSaving ? "Guardando..." : "Guardar datos de pago"}
           </Button>
