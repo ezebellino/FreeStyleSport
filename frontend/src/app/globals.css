@@ -66,6 +66,32 @@ body {
   outline-offset: 3px;
 }
 
+.freestyle-alert-confirm {
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  border-radius: 999px;
+  padding: 0.75rem 1.4rem;
+  background: #c6ff00;
+  color: #111111;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 0 0 1px rgba(198, 255, 0, 0.22), 0 14px 34px rgba(198, 255, 0, 0.18);
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.freestyle-alert-confirm:hover {
+  background: #dcff3d;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(198, 255, 0, 0.28), 0 18px 42px rgba(198, 255, 0, 0.24);
+}
+
+.freestyle-alert-confirm:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
 .freestyle-hero {
   position: relative;
   min-height: calc(100vh - 4rem);

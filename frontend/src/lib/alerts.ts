@@ -9,7 +9,10 @@ async function showAlert(kind: AlertKind, title: string, text?: string) {
     confirmButtonText: "Entendido",
     background: "#111116",
     color: "#f8fafc",
-    confirmButtonColor: "#baff00",
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: "freestyle-alert-confirm",
+    },
   })
 }
 
