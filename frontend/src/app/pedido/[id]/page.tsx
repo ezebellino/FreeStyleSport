@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatCartPrice } from "@/lib/cart"
 import { getStoreOrder, orderItemVariantDescription, type OrderRead } from "@/lib/orders"
+import { getPaymentProfile } from "@/lib/payment-profile"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
@@ -183,6 +184,10 @@ function formatOrderDate(value?: string) {
   }).format(new Date(value))
 }
 
+function canShowPaymentProfile(paymentMethod: string) {
+  return ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
+}
+
 async function loadOrder(orderId: string): Promise<OrderRead | null> {
   try {
     return await getStoreOrder(orderId)
@@ -195,7 +200,10 @@ export default async function OrderTrackingPage({
   params,
 }: Readonly<{ params: Promise<{ id: string }> }>) {
   const { id } = await params
-  const order = await loadOrder(id)
+  const [order, paymentProfile] = await Promise.all([
+    loadOrder(id),
+    getPaymentProfile().catch(() => null),
+  ])
   if (!order) {
     notFound()
   }
@@ -205,6 +213,8 @@ export default async function OrderTrackingPage({
   const NextStepIcon = nextStep.icon
   const whatsappHref = buildWhatsAppHref(order)
   const createdAt = formatOrderDate(order.created_at)
+  const shouldShowPaymentProfile =
+    Boolean(paymentProfile?.is_active) && canShowPaymentProfile(order.payment_method)
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
@@ -404,6 +414,34 @@ export default async function OrderTrackingPage({
             <div className="rounded-2xl border bg-secondary/40 p-3 text-sm">
               <p className="font-semibold">Comentario</p>
               <p className="mt-1 text-muted-foreground">{order.notes}</p>
+            </div>
+          ) : null}
+
+          {shouldShowPaymentProfile && paymentProfile ? (
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm leading-6">
+              <p className="font-black text-primary">Datos para pagar</p>
+              <div className="mt-2 grid gap-1 text-muted-foreground">
+                {paymentProfile.provider ? <p>Medio: {paymentProfile.provider}</p> : null}
+                {paymentProfile.alias ? <p>Alias: {paymentProfile.alias}</p> : null}
+                {paymentProfile.account_holder ? <p>Titular: {paymentProfile.account_holder}</p> : null}
+                {paymentProfile.account_identifier ? (
+                  <p>CBU/CVU: {paymentProfile.account_identifier}</p>
+                ) : null}
+              </div>
+              {paymentProfile.qr_image_url ? (
+                <div className="mt-3 aspect-square overflow-hidden rounded-2xl border bg-white">
+                  <ProductImage
+                    alt="QR de pago del local"
+                    className="size-full object-contain p-3"
+                    src={paymentProfile.qr_image_url}
+                  />
+                </div>
+              ) : null}
+              {paymentProfile.instructions ? (
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                  {paymentProfile.instructions}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

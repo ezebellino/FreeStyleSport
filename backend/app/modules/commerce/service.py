@@ -9,6 +9,7 @@ from app.modules.commerce.models import (
     Category,
     Order,
     OrderItem,
+    PaymentProfile,
     Product,
     ProductImage,
     ProductVariant,
@@ -18,6 +19,7 @@ from app.modules.commerce.schemas import (
     OrderCreate,
     OrderItemCreate,
     OrderUpdate,
+    PaymentProfileUpdate,
     ProductCreate,
     ProductUpdate,
 )
@@ -48,6 +50,52 @@ async def get_or_create_default_tenant(session: AsyncSession) -> Tenant:
     session.add(tenant)
     await session.flush()
     return tenant
+
+
+def empty_payment_profile() -> dict[str, object]:
+    return {
+        "id": None,
+        "alias": None,
+        "account_holder": None,
+        "account_identifier": None,
+        "provider": None,
+        "qr_image_url": None,
+        "instructions": None,
+        "is_active": False,
+    }
+
+
+async def get_payment_profile(session: AsyncSession) -> PaymentProfile | dict[str, object]:
+    tenant = await get_default_tenant(session)
+    if tenant is None:
+        return empty_payment_profile()
+
+    payment_profile = await session.scalar(
+        select(PaymentProfile).where(PaymentProfile.tenant_id == tenant.id)
+    )
+    return payment_profile if payment_profile is not None else empty_payment_profile()
+
+
+async def update_payment_profile(
+    session: AsyncSession,
+    payload: PaymentProfileUpdate,
+) -> PaymentProfile:
+    tenant = await get_or_create_default_tenant(session)
+    payment_profile = await session.scalar(
+        select(PaymentProfile).where(PaymentProfile.tenant_id == tenant.id)
+    )
+    if payment_profile is None:
+        payment_profile = PaymentProfile(tenant_id=tenant.id)
+        session.add(payment_profile)
+
+    for field, value in payload.model_dump().items():
+        if isinstance(value, str):
+            value = value.strip() or None
+        setattr(payment_profile, field, value)
+
+    await session.commit()
+    await session.refresh(payment_profile)
+    return payment_profile
 
 
 async def get_or_create_category(

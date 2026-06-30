@@ -38,6 +38,33 @@ class Tenant(Base):
     categories: Mapped[list["Category"]] = relationship(back_populates="tenant")
     products: Mapped[list["Product"]] = relationship(back_populates="tenant")
     orders: Mapped[list["Order"]] = relationship(back_populates="tenant")
+    payment_profile: Mapped["PaymentProfile | None"] = relationship(back_populates="tenant")
+
+
+class PaymentProfile(Base):
+    __tablename__ = "commerce_payment_profiles"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_tenants.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
+    alias: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    account_holder: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    account_identifier: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    qr_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    tenant: Mapped[Tenant] = relationship(back_populates="payment_profile")
 
 
 class Category(Base):
