@@ -412,7 +412,7 @@ export function OrderAdminPanel() {
                             key={item.id}
                             className="grid gap-3 rounded-2xl border bg-card p-3 sm:grid-cols-[4.5rem_1fr_auto]"
                           >
-                            <div className="aspect-square overflow-hidden rounded-xl bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]">
+                            <div className="aspect-square overflow-hidden rounded-xl bg-white">
                               <ProductImage
                                 alt={item.product_name}
                                 className="size-full object-contain p-1"
