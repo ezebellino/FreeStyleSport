@@ -28,6 +28,10 @@ from app.modules.commerce.schemas import (
 DEFAULT_TENANT_SLUG = "freestyle"
 WELCOME_COUPON_CODE = "BIENVENIDA10"
 WELCOME_DISCOUNT_RATE = Decimal("0.10")
+FREE_SHIPPING_THRESHOLD = Decimal("100000.00")
+GIFT_BONUS_THRESHOLD = Decimal("200000.00")
+GIFT_BONUS_RATE = Decimal("0.10")
+GIFT_BONUS_CODE = "PROXIMA10"
 MONEY_QUANT = Decimal("0.01")
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
 PAID_REQUIRED_ORDER_STATUSES = {"preparing", "ready", "delivered"}
@@ -207,6 +211,28 @@ def calculate_welcome_discount(
         return Decimal("0.00")
 
     return _money(subtotal * WELCOME_DISCOUNT_RATE)
+
+
+def order_commercial_benefits(final_total: Decimal) -> dict[str, object]:
+    benefits: dict[str, object] = {}
+    if final_total > FREE_SHIPPING_THRESHOLD:
+        benefits.update(
+            {
+                "free_shipping": True,
+                "free_shipping_label": "Envío gratis",
+                "free_shipping_threshold": str(FREE_SHIPPING_THRESHOLD),
+            }
+        )
+    if final_total > GIFT_BONUS_THRESHOLD:
+        benefits.update(
+            {
+                "gift_coupon_code": GIFT_BONUS_CODE,
+                "gift_coupon_label": "Bono 10% para próxima compra",
+                "gift_coupon_rate": float(GIFT_BONUS_RATE),
+                "gift_coupon_threshold": str(GIFT_BONUS_THRESHOLD),
+            }
+        )
+    return benefits
 
 
 def _order_variant_quantities(order: Order) -> dict[str, int]:
@@ -595,6 +621,7 @@ async def create_order(
     )
     total = _money(subtotal - welcome_discount)
     order_metadata: dict[str, object] = {"source": "storefront_cart"}
+    order_metadata.update(order_commercial_benefits(total))
     if welcome_discount > 0:
         order_metadata.update(
             {

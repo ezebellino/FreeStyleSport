@@ -21,7 +21,10 @@ import { Button } from "@/components/ui/button"
 import { LoadingState } from "@/components/ui/loading-state"
 import { formatCartPrice } from "@/lib/cart"
 import {
+  GIFT_BONUS_CODE,
+  hasFreeShippingBenefit,
   listAdminOrders,
+  orderGiftCouponCode,
   orderItemVariantDescription,
   type OrderRead,
   updateAdminOrderPaymentStatus,
@@ -94,6 +97,7 @@ function buildWhatsAppHref(order: OrderRead) {
   const phone = normalizePhoneForWhatsApp(order.customer_phone)
   if (!phone) return null
 
+  const giftCouponCode = orderGiftCouponCode(order)
   const itemLines = order.items
     .map((item) => {
       const variant = orderItemVariantDescription(item)
@@ -106,8 +110,10 @@ function buildWhatsAppHref(order: OrderRead) {
     itemLines,
     "",
     `Total: ${formatCartPrice(Number(order.total))}`,
+    hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
+    giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
     `Estado: ${statusLabel(order.status)} / ${paymentStatusLabel(order.payment_status)}`,
-  ].join("\n")
+  ].filter(Boolean).join("\n")
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
 }
@@ -345,6 +351,8 @@ export function OrderAdminPanel() {
             const whatsappHref = buildWhatsAppHref(order)
             const priority = priorityLabel(order)
             const PriorityIcon = priority.icon
+            const hasFreeShipping = hasFreeShippingBenefit(order)
+            const giftCouponCode = orderGiftCouponCode(order)
 
             return (
               <article key={order.id} className="overflow-hidden rounded-[2rem] border bg-background/35">
@@ -364,6 +372,10 @@ export function OrderAdminPanel() {
                       <Badge variant={orderStockReserved(order) ? "secondary" : "outline"}>
                         {orderStockReserved(order) ? "Stock reservado" : "Stock liberado"}
                       </Badge>
+                      {hasFreeShipping ? <Badge variant="secondary">Envío gratis</Badge> : null}
+                      {giftCouponCode ? (
+                        <Badge variant="secondary">Bono {giftCouponCode || GIFT_BONUS_CODE}</Badge>
+                      ) : null}
                     </div>
                     <p className="text-sm leading-6 text-muted-foreground">{operationalNote(order)}</p>
                   </div>

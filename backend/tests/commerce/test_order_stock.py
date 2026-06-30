@@ -5,10 +5,12 @@ import pytest
 
 from app.core.errors import ApiError
 from app.modules.commerce.service import (
+    GIFT_BONUS_CODE,
     WELCOME_COUPON_CODE,
     _release_variant_quantities,
     _reserve_variant_quantities,
     calculate_welcome_discount,
+    order_commercial_benefits,
 )
 
 
@@ -85,3 +87,22 @@ def test_welcome_discount_requires_registered_customer_email() -> None:
     )
 
     assert discount == Decimal("0.00")
+
+
+def test_order_commercial_benefits_require_exceeding_free_shipping_threshold() -> None:
+    benefits_at_threshold = order_commercial_benefits(Decimal("100000.00"))
+    benefits_above_threshold = order_commercial_benefits(Decimal("100000.01"))
+
+    assert "free_shipping" not in benefits_at_threshold
+    assert benefits_above_threshold["free_shipping"] is True
+    assert benefits_above_threshold["free_shipping_threshold"] == "100000.00"
+
+
+def test_order_commercial_benefits_require_exceeding_gift_bonus_threshold() -> None:
+    benefits_at_threshold = order_commercial_benefits(Decimal("200000.00"))
+    benefits_above_threshold = order_commercial_benefits(Decimal("200000.01"))
+
+    assert "gift_coupon_code" not in benefits_at_threshold
+    assert benefits_above_threshold["free_shipping"] is True
+    assert benefits_above_threshold["gift_coupon_code"] == GIFT_BONUS_CODE
+    assert benefits_above_threshold["gift_coupon_rate"] == 0.1
