@@ -20,6 +20,8 @@ def test_commerce_routes_are_registered() -> None:
     assert "/commerce/payment-profile" in paths
     assert "/commerce/orders" in paths
     assert "/commerce/orders/{order_id}" in paths
+    assert "/commerce/orders/{order_id}/mercado-pago/preference" in paths
+    assert "/commerce/webhooks/mercado-pago" in paths
     assert "/commerce/my/orders" in paths
     assert "/commerce/admin/products" in paths
     assert "/commerce/admin/products/{product_id}" in paths

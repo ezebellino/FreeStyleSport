@@ -10,6 +10,8 @@ export type OrderCreatePayload = {
   customer_phone?: string
   payment_method: "to_confirm" | "cash" | "transfer" | "mercado_pago" | "card" | "wallet"
   fulfillment_method: "pickup" | "shipping" | "local_payment"
+  payment_reference?: string
+  payment_proof_url?: string
   notes?: string
   items: Array<{
     product_slug: string
@@ -59,6 +61,12 @@ export type OrderRead = {
   }>
 }
 
+export type MercadoPagoPreference = {
+  preference_id: string
+  init_point: string
+  sandbox_init_point?: string | null
+}
+
 function orderAttributeText(item: OrderRead["items"][number], key: string) {
   const attributes = item.attributes as Record<string, unknown> | undefined
   const value = attributes?.[key]
@@ -90,6 +98,25 @@ export function orderGiftCouponCode(order: OrderRead) {
   return typeof code === "string" && code.trim() ? code.trim() : null
 }
 
+export function orderPaymentReference(order: OrderRead) {
+  const reference = order.metadata?.payment_reference
+  return typeof reference === "string" && reference.trim() ? reference.trim() : null
+}
+
+export function orderPaymentProofUrl(order: OrderRead) {
+  const proofUrl = order.metadata?.payment_proof_url
+  return typeof proofUrl === "string" && proofUrl.trim() ? proofUrl.trim() : null
+}
+
+export function hasPaymentSubmission(order: OrderRead) {
+  return order.metadata?.payment_submitted === true
+}
+
+export function orderMercadoPagoInitPoint(order: OrderRead) {
+  const initPoint = order.metadata?.mercado_pago_init_point
+  return typeof initPoint === "string" && initPoint.trim() ? initPoint.trim() : null
+}
+
 export async function createStoreOrder(payload: OrderCreatePayload): Promise<OrderRead> {
   const response = await fetch(`${publicApiUrl}/commerce/orders`, {
     method: "POST",
@@ -104,6 +131,19 @@ export async function createStoreOrder(payload: OrderCreatePayload): Promise<Ord
   }
 
   return response.json() as Promise<OrderRead>
+}
+
+export async function createMercadoPagoPreference(orderId: string): Promise<MercadoPagoPreference> {
+  const response = await fetch(`${publicApiUrl}/commerce/orders/${orderId}/mercado-pago/preference`, {
+    method: "POST",
+  })
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos preparar el pago con Mercado Pago")
+  }
+
+  return response.json() as Promise<MercadoPagoPreference>
 }
 
 export async function getStoreOrder(orderId: string): Promise<OrderRead> {

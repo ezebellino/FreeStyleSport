@@ -148,6 +148,8 @@ class OrderCreate(BaseModel):
     customer_phone: str | None = Field(default=None, max_length=80)
     payment_method: PaymentMethod = "to_confirm"
     fulfillment_method: FulfillmentMethod = "pickup"
+    payment_reference: str | None = Field(default=None, max_length=240)
+    payment_proof_url: str | None = Field(default=None, max_length=1000)
     notes: str | None = Field(default=None, max_length=1000)
     items: list[OrderItemCreate] = Field(min_length=1, max_length=80)
 
@@ -190,6 +192,16 @@ class OrderRead(BaseModel):
 class OrderUpdate(BaseModel):
     status: OrderStatus | None = None
     payment_status: PaymentStatus | None = None
+
+
+class MercadoPagoPreferenceRead(BaseModel):
+    preference_id: str
+    init_point: str
+    sandbox_init_point: str | None = None
+
+
+class MercadoPagoWebhookRead(BaseModel):
+    received: bool = True
 
 
 class CloudinarySignatureRead(BaseModel):

@@ -13,7 +13,7 @@ export default async function ProductsPage({
   let isDemo = true
 
   try {
-    const apiProducts = await fetchProducts()
+    const apiProducts = await fetchProducts({ category: categoria, audience: linea })
     if (apiProducts.length > 0) {
       products = apiProducts
       isDemo = false
@@ -51,6 +51,7 @@ export default async function ProductsPage({
       ) : null}
 
       <ProductCatalog
+        key={`${categoria ?? ""}:${linea ?? ""}:${q ?? ""}`}
         products={products}
         initialCategory={categoria ?? ""}
         initialAudience={linea ?? ""}

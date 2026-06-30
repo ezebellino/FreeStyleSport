@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -10,7 +12,10 @@ from app.modules.commerce.service import (
     _release_variant_quantities,
     _reserve_variant_quantities,
     calculate_welcome_discount,
+    mercado_pago_payment_status,
     order_commercial_benefits,
+    order_payment_submission_metadata,
+    validate_mercado_pago_webhook_signature,
 )
 
 
@@ -106,3 +111,61 @@ def test_order_commercial_benefits_require_exceeding_gift_bonus_threshold() -> N
     assert benefits_above_threshold["free_shipping"] is True
     assert benefits_above_threshold["gift_coupon_code"] == GIFT_BONUS_CODE
     assert benefits_above_threshold["gift_coupon_rate"] == 0.1
+
+
+def test_order_payment_submission_metadata_tracks_reference_and_proof() -> None:
+    metadata = order_payment_submission_metadata(
+        payment_reference="  MP-12345  ",
+        payment_proof_url="  https://example.com/comprobante.jpg  ",
+    )
+
+    assert metadata["payment_submitted"] is True
+    assert metadata["payment_review_required"] is True
+    assert metadata["payment_reference"] == "MP-12345"
+    assert metadata["payment_proof_url"] == "https://example.com/comprobante.jpg"
+
+
+def test_order_payment_submission_metadata_ignores_empty_values() -> None:
+    metadata = order_payment_submission_metadata(payment_reference=" ", payment_proof_url=None)
+
+    assert metadata == {}
+
+
+def test_mercado_pago_webhook_signature_validation_accepts_valid_signature() -> None:
+    secret = "webhook-secret"
+    data_id = "123456"
+    request_id = "request-1"
+    timestamp = "1704908010"
+    manifest = f"id:{data_id};request-id:{request_id};ts:{timestamp};"
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        manifest.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    is_valid = validate_mercado_pago_webhook_signature(
+        signature_header=f"ts={timestamp},v1={signature}",
+        request_id=request_id,
+        data_id=data_id,
+        secret=secret,
+    )
+
+    assert is_valid is True
+
+
+def test_mercado_pago_webhook_signature_validation_rejects_invalid_signature() -> None:
+    is_valid = validate_mercado_pago_webhook_signature(
+        signature_header="ts=1704908010,v1=bad",
+        request_id="request-1",
+        data_id="123456",
+        secret="webhook-secret",
+    )
+
+    assert is_valid is False
+
+
+def test_mercado_pago_payment_status_maps_to_internal_payment_status() -> None:
+    assert mercado_pago_payment_status("approved") == "paid"
+    assert mercado_pago_payment_status("in_process") == "pending"
+    assert mercado_pago_payment_status("rejected") == "failed"
+    assert mercado_pago_payment_status("refunded") == "refunded"

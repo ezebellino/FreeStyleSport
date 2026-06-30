@@ -1,10 +1,15 @@
+import hashlib
+import hmac
 from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal
+from urllib.parse import parse_qsl
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import Settings
 from app.core.errors import ApiError
 from app.modules.commerce.models import (
     Category,
@@ -33,6 +38,7 @@ GIFT_BONUS_THRESHOLD = Decimal("200000.00")
 GIFT_BONUS_RATE = Decimal("0.10")
 GIFT_BONUS_CODE = "PROXIMA10"
 MONEY_QUANT = Decimal("0.01")
+MERCADO_PAGO_API_URL = "https://api.mercadopago.com"
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
 PAID_REQUIRED_ORDER_STATUSES = {"preparing", "ready", "delivered"}
 STOCK_RELEASING_ORDER_STATUSES = {"cancelled"}
@@ -233,6 +239,225 @@ def order_commercial_benefits(final_total: Decimal) -> dict[str, object]:
             }
         )
     return benefits
+
+
+def order_payment_submission_metadata(
+    *,
+    payment_reference: str | None,
+    payment_proof_url: str | None,
+) -> dict[str, object]:
+    reference = payment_reference.strip() if payment_reference else ""
+    proof_url = payment_proof_url.strip() if payment_proof_url else ""
+    if not reference and not proof_url:
+        return {}
+
+    metadata: dict[str, object] = {
+        "payment_submitted": True,
+        "payment_review_required": True,
+    }
+    if reference:
+        metadata["payment_reference"] = reference
+    if proof_url:
+        metadata["payment_proof_url"] = proof_url
+    return metadata
+
+
+def _mp_headers(settings: Settings) -> dict[str, str]:
+    if not settings.mercado_pago_access_token:
+        raise ApiError(
+            503,
+            "mercado_pago_not_configured",
+            "Mercado Pago no esta configurado para cobrar online",
+        )
+    return {
+        "Authorization": f"Bearer {settings.mercado_pago_access_token}",
+        "Content-Type": "application/json",
+    }
+
+
+def _order_code(order_id: str) -> str:
+    return order_id[:8].upper()
+
+
+def _metadata_with_order_fields(order: Order, values: dict[str, object]) -> dict[str, object]:
+    return {**(order.order_metadata or {}), **values}
+
+
+async def create_mercado_pago_preference(
+    session: AsyncSession,
+    order_id: str,
+    settings: Settings,
+) -> dict[str, str | None]:
+    order = await get_order_by_id(session, order_id)
+    if order.payment_status == "paid":
+        raise ApiError(409, "order_already_paid", "Este pedido ya tiene el pago confirmado")
+    if order.status == "cancelled":
+        raise ApiError(409, "order_cancelled", "No se puede pagar una reserva cancelada")
+
+    notification_url = f"{settings.public_api_url.rstrip('/')}/commerce/webhooks/mercado-pago"
+    order_url = f"{settings.public_app_url.rstrip('/')}/pedido/{order.id}"
+    payload = {
+        "items": [
+            {
+                "title": f"Pedido FreeStyle #{_order_code(order.id)}",
+                "quantity": 1,
+                "currency_id": order.currency,
+                "unit_price": float(order.total),
+            }
+        ],
+        "external_reference": order.id,
+        "notification_url": notification_url,
+        "back_urls": {
+            "success": order_url,
+            "pending": order_url,
+            "failure": order_url,
+        },
+        "auto_return": "approved",
+    }
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.post(
+            f"{MERCADO_PAGO_API_URL}/checkout/preferences",
+            headers=_mp_headers(settings),
+            json=payload,
+        )
+    if response.status_code >= 400:
+        raise ApiError(
+            502,
+            "mercado_pago_preference_failed",
+            "No pudimos preparar el pago con Mercado Pago",
+        )
+
+    preference = response.json()
+    preference_id = str(preference.get("id") or "")
+    init_point = str(preference.get("init_point") or "")
+    sandbox_init_point = preference.get("sandbox_init_point")
+    if not preference_id or not init_point:
+        raise ApiError(
+            502,
+            "mercado_pago_preference_invalid",
+            "Mercado Pago no devolvio un link de pago valido",
+        )
+
+    order.payment_status = "pending"
+    order.order_metadata = _metadata_with_order_fields(
+        order,
+        {
+            "mercado_pago_preference_id": preference_id,
+            "mercado_pago_init_point": init_point,
+            "mercado_pago_sandbox_init_point": sandbox_init_point,
+            "mercado_pago_payment_requested": True,
+        },
+    )
+    await session.commit()
+    await session.refresh(order, attribute_names=["items"])
+    return {
+        "preference_id": preference_id,
+        "init_point": init_point,
+        "sandbox_init_point": str(sandbox_init_point) if sandbox_init_point else None,
+    }
+
+
+def parse_mercado_pago_signature(signature_header: str | None) -> dict[str, str]:
+    if not signature_header:
+        return {}
+    return {
+        key.strip(): value.strip()
+        for key, value in parse_qsl(signature_header.replace(",", "&"), keep_blank_values=True)
+        if key.strip()
+    }
+
+
+def validate_mercado_pago_webhook_signature(
+    *,
+    signature_header: str | None,
+    request_id: str | None,
+    data_id: str | None,
+    secret: str | None,
+) -> bool:
+    if not secret:
+        return True
+    signature_parts = parse_mercado_pago_signature(signature_header)
+    timestamp = signature_parts.get("ts")
+    received_signature = signature_parts.get("v1")
+    if not timestamp or not received_signature or not request_id or not data_id:
+        return False
+
+    manifest = f"id:{data_id};request-id:{request_id};ts:{timestamp};"
+    expected_signature = hmac.new(
+        secret.encode("utf-8"),
+        manifest.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected_signature, received_signature)
+
+
+def mercado_pago_payment_status(status: str | None) -> str:
+    if status == "approved":
+        return "paid"
+    if status in {"pending", "in_process", "authorized"}:
+        return "pending"
+    if status in {"rejected", "cancelled"}:
+        return "failed"
+    if status == "refunded":
+        return "refunded"
+    return "pending"
+
+
+async def get_mercado_pago_payment(
+    payment_id: str,
+    settings: Settings,
+) -> dict[str, object]:
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.get(
+            f"{MERCADO_PAGO_API_URL}/v1/payments/{payment_id}",
+            headers=_mp_headers(settings),
+        )
+    if response.status_code >= 400:
+        raise ApiError(
+            502,
+            "mercado_pago_payment_fetch_failed",
+            "No pudimos validar el pago con Mercado Pago",
+        )
+    return response.json()
+
+
+async def apply_mercado_pago_payment(
+    session: AsyncSession,
+    payment: dict[str, object],
+) -> Order | None:
+    external_reference = payment.get("external_reference")
+    if not isinstance(external_reference, str) or not external_reference:
+        return None
+
+    order = await get_order_by_id(session, external_reference)
+    payment_id = str(payment.get("id") or "")
+    status = payment.get("status")
+    currency = payment.get("currency_id")
+    transaction_amount = Decimal(str(payment.get("transaction_amount") or "0"))
+    is_matching_order = (
+        transaction_amount == Decimal(order.total)
+        and (not currency or str(currency).upper() == order.currency.upper())
+    )
+    next_payment_status = mercado_pago_payment_status(status if isinstance(status, str) else None)
+    if next_payment_status == "paid" and not is_matching_order:
+        next_payment_status = "pending"
+
+    order.payment_status = next_payment_status
+    order.order_metadata = _metadata_with_order_fields(
+        order,
+        {
+            "mercado_pago_payment_id": payment_id,
+            "mercado_pago_payment_status": status,
+            "mercado_pago_payment_amount": str(transaction_amount),
+            "mercado_pago_payment_currency": currency,
+            "mercado_pago_payment_validated": is_matching_order,
+            "mercado_pago_payment_raw_status_detail": payment.get("status_detail"),
+        },
+    )
+    await session.commit()
+    await session.refresh(order, attribute_names=["items"])
+    return order
 
 
 def _order_variant_quantities(order: Order) -> dict[str, int]:
@@ -622,6 +847,11 @@ async def create_order(
     total = _money(subtotal - welcome_discount)
     order_metadata: dict[str, object] = {"source": "storefront_cart"}
     order_metadata.update(order_commercial_benefits(total))
+    payment_submission = order_payment_submission_metadata(
+        payment_reference=payload.payment_reference,
+        payment_proof_url=payload.payment_proof_url,
+    )
+    order_metadata.update(payment_submission)
     if welcome_discount > 0:
         order_metadata.update(
             {
@@ -636,7 +866,7 @@ async def create_order(
     order = Order(
         tenant_id=tenant.id,
         status="pending",
-        payment_status="unpaid",
+        payment_status="pending" if payment_submission else "unpaid",
         customer_name=payload.customer_name,
         customer_email=effective_customer_email,
         customer_phone=payload.customer_phone,
