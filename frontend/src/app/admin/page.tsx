@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { AdminOverview } from "@/components/admin/admin-overview"
+import { PaymentProfilePanel } from "@/components/admin/payment-profile-panel"
 import { OrderAdminPanel } from "@/components/orders/order-admin-panel"
 import { ProductAdminPanel } from "@/components/products/product-admin-panel"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +21,8 @@ export default function AdminPage() {
       </div>
 
       <AdminOverview />
+
+      <PaymentProfilePanel />
 
       <div className="space-y-4">
         <OrderAdminPanel />

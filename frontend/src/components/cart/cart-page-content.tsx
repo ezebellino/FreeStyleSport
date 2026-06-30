@@ -32,6 +32,7 @@ import {
   type OrderCreatePayload,
   type OrderRead,
 } from "@/lib/orders"
+import { getPaymentProfile, type PaymentProfile } from "@/lib/payment-profile"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
@@ -184,6 +185,7 @@ export function CartPageContent() {
   const [notes, setNotes] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [createdOrder, setCreatedOrder] = useState<OrderRead | null>(null)
+  const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null)
   const [error, setError] = useState<string | null>(null)
   const message = useMemo(() => buildReservationMessage(items, total), [items, total])
   const whatsappHref = buildWhatsAppHref(message)
@@ -194,6 +196,9 @@ export function CartPageContent() {
   const selectedPayment = paymentOptions.find((option) => option.value === paymentMethod)
   const selectedFulfillment = fulfillmentOptions.find((option) => option.value === fulfillmentMethod)
   const canSubmit = itemCount > 0 && customerName.trim().length > 1 && customerPhone.trim().length > 5
+  const shouldShowPaymentProfile =
+    Boolean(paymentProfile?.is_active) &&
+    ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
 
   useEffect(() => {
     let isMounted = true
@@ -205,6 +210,22 @@ export function CartPageContent() {
           setCustomerName((currentName) => currentName || displayName)
           setCustomerPhone((currentPhone) => currentPhone || user.phone || "")
           setCustomerEmail((currentEmail) => currentEmail || user.email)
+        }
+      })
+      .catch(() => undefined)
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    getPaymentProfile()
+      .then((profile) => {
+        if (isMounted) {
+          setPaymentProfile(profile)
         }
       })
       .catch(() => undefined)
@@ -643,6 +664,34 @@ export function CartPageContent() {
               </div>
             </div>
           </div>
+
+          {shouldShowPaymentProfile && paymentProfile ? (
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm leading-6">
+              <p className="font-black text-primary">Datos de pago del local</p>
+              <div className="mt-2 grid gap-1 text-muted-foreground">
+                {paymentProfile.provider ? <p>Medio: {paymentProfile.provider}</p> : null}
+                {paymentProfile.alias ? <p>Alias: {paymentProfile.alias}</p> : null}
+                {paymentProfile.account_holder ? <p>Titular: {paymentProfile.account_holder}</p> : null}
+                {paymentProfile.account_identifier ? (
+                  <p>CBU/CVU: {paymentProfile.account_identifier}</p>
+                ) : null}
+              </div>
+              {paymentProfile.qr_image_url ? (
+                <div className="mt-3 aspect-square overflow-hidden rounded-2xl border bg-white">
+                  <ProductImage
+                    alt="QR de pago del local"
+                    className="size-full object-contain p-3"
+                    src={paymentProfile.qr_image_url}
+                  />
+                </div>
+              ) : null}
+              {paymentProfile.instructions ? (
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                  {paymentProfile.instructions}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

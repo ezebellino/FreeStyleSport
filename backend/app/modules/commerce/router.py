@@ -13,6 +13,8 @@ from app.modules.commerce.schemas import (
     OrderCreate,
     OrderRead,
     OrderUpdate,
+    PaymentProfileRead,
+    PaymentProfileUpdate,
     ProductCreate,
     ProductRead,
     ProductUpdate,
@@ -21,12 +23,14 @@ from app.modules.commerce.service import (
     create_order,
     create_product,
     get_order_by_id,
+    get_payment_profile,
     get_public_product_by_slug,
     list_admin_orders,
     list_admin_products,
     list_orders_by_customer_email,
     list_public_products,
     update_order,
+    update_payment_profile,
     update_product,
 )
 from app.modules.identity.audit import record_audit_event
@@ -94,6 +98,11 @@ async def product_detail(slug: str, session: SessionDependency) -> ProductRead:
     return await get_public_product_by_slug(session, slug)
 
 
+@router.get("/payment-profile", response_model=PaymentProfileRead)
+async def payment_profile(session: SessionDependency) -> PaymentProfileRead:
+    return await get_payment_profile(session)
+
+
 @router.post("/orders", response_model=OrderRead, status_code=201)
 async def order_create(
     payload: OrderCreate,
@@ -136,6 +145,32 @@ async def admin_cloudinary_signature(
     admin: StoreAdminDependency,
 ) -> CloudinarySignatureRead:
     return _cloudinary_signature(settings)
+
+
+@router.get("/admin/payment-profile", response_model=PaymentProfileRead)
+async def admin_payment_profile(
+    session: SessionDependency,
+    admin: StoreAdminDependency,
+) -> PaymentProfileRead:
+    return await get_payment_profile(session)
+
+
+@router.put("/admin/payment-profile", response_model=PaymentProfileRead)
+async def admin_update_payment_profile(
+    payload: PaymentProfileUpdate,
+    request: Request,
+    session: SessionDependency,
+    admin: StoreAdminDependency,
+) -> PaymentProfileRead:
+    payment_profile = await update_payment_profile(session, payload)
+    await record_audit_event(
+        session,
+        request,
+        "commerce.payment_profile_updated",
+        getattr(admin, "id", None),
+    )
+    await session.commit()
+    return payment_profile
 
 
 @router.get("/admin/orders", response_model=list[OrderRead])

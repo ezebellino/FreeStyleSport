@@ -11,6 +11,26 @@ PaymentMethod = Literal["to_confirm", "cash", "transfer", "mercado_pago", "card"
 FulfillmentMethod = Literal["pickup", "shipping", "local_payment"]
 
 
+class PaymentProfileBase(BaseModel):
+    alias: str | None = Field(default=None, max_length=120)
+    account_holder: str | None = Field(default=None, max_length=160)
+    account_identifier: str | None = Field(default=None, max_length=80)
+    provider: str | None = Field(default=None, max_length=80)
+    qr_image_url: str | None = Field(default=None, max_length=1000)
+    instructions: str | None = Field(default=None, max_length=1000)
+    is_active: bool = True
+
+
+class PaymentProfileUpdate(PaymentProfileBase):
+    pass
+
+
+class PaymentProfileRead(PaymentProfileBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str | None = None
+
+
 class CategoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
