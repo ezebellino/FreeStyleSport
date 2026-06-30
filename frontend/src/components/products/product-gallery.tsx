@@ -14,7 +14,7 @@ export function ProductGallery({ product }: Readonly<{ product: Product }>) {
 
   return (
     <div className="space-y-3">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)] shadow-sm">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border bg-white shadow-sm">
         {images.length > 1 ? (
           <Badge className="absolute right-4 top-4 z-10 bg-background/90 text-foreground shadow-sm">
             {selectedImageIndex + 1} / {images.length}

@@ -394,7 +394,7 @@ export function CartPageContent() {
               >
                 <Link
                   href={`/productos/${item.slug}`}
-                  className="aspect-square overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]"
+                  className="aspect-square overflow-hidden rounded-2xl bg-white"
                 >
                   {item.imageUrl ? (
                     <ProductImage

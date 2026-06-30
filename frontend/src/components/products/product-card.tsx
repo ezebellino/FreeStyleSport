@@ -29,7 +29,7 @@ export function ProductCard({ product }: Readonly<{ product: Product }>) {
 
   return (
     <article className="group overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-      <div className="relative aspect-[4/5] overflow-hidden bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-white">
         {mainImage ? (
           <ProductImage
             alt={mainImage.alt_text ?? product.name}

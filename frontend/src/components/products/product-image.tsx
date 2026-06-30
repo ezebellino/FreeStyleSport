@@ -12,7 +12,7 @@ export function ProductImage({
 
   if (!src || hasError) {
     return (
-      <div className="flex size-full items-center justify-center bg-[radial-gradient(circle_at_center,#ffffff_0%,#f1f5f9_48%,#dbeafe_100%)] p-6 text-center font-display text-2xl font-black italic text-slate-500">
+      <div className="flex size-full items-center justify-center bg-white p-6 text-center font-display text-2xl font-black italic text-slate-500">
         FreeStyle
       </div>
     )

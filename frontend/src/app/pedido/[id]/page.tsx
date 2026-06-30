@@ -338,7 +338,7 @@ export default async function OrderTrackingPage({
                   key={item.id}
                   className="grid gap-4 rounded-3xl border bg-card p-4 shadow-sm sm:grid-cols-[6rem_1fr_auto]"
                 >
-                  <div className="aspect-square overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_45%,#dbeafe_100%)]">
+                  <div className="aspect-square overflow-hidden rounded-2xl bg-white">
                     <ProductImage
                       alt={item.product_name}
                       className="size-full object-contain p-2"
