@@ -76,11 +76,11 @@ export default async function HomePage() {
             <Reveal className="relative z-10 flex flex-col items-start gap-6">
               <div className="flex items-center gap-3">
                 <Image
-                  src="/brand/fs-mark.webp"
+                  src="/brand/fs-mark-cropped.webp"
                   alt=""
-                  width={64}
-                  height={42}
-                  className="h-10 w-auto object-contain drop-shadow-[0_0_18px_rgba(198,255,0,0.25)]"
+                  width={74}
+                  height={64}
+                  className="h-12 w-auto object-contain drop-shadow-[0_0_18px_rgba(198,255,0,0.25)]"
                   priority
                 />
                 <p className="text-sm font-bold tracking-[0.3em] text-primary">NUEVA TEMPORADA</p>
@@ -177,6 +177,14 @@ export default async function HomePage() {
                   className="object-cover object-center"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.62),rgba(0,0,0,0.18)_48%,rgba(0,0,0,0.46)),radial-gradient(circle_at_70%_20%,rgba(198,255,0,0.2),transparent_28%)]" />
+                <div className="absolute right-0 top-10 hidden h-36 w-[48%] bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.96),rgba(0,0,0,0.82)_48%,transparent_78%)] sm:block" />
+                <Image
+                  src="/brand/freestyle-logo-cropped.webp"
+                  alt=""
+                  width={260}
+                  height={118}
+                  className="absolute right-6 top-14 hidden w-56 opacity-70 drop-shadow-[0_0_24px_rgba(0,0,0,0.9)] sm:block"
+                />
                 <div className="absolute left-5 top-5 max-w-xs">
                   <Badge className="bg-primary text-primary-foreground">FreeStyle</Badge>
                   <p className="mt-3 font-display text-4xl font-black italic leading-none text-white">

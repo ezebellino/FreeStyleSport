@@ -146,11 +146,11 @@ export function StoreHeader() {
 
           <Link href="/" aria-label="FreeStyle" className="flex items-center gap-2">
             <Image
-              src="/brand/freestyle-logo.webp"
+              src="/brand/freestyle-logo-cropped.webp"
               alt=""
-              width={132}
-              height={44}
-              className="h-8 w-auto object-contain sm:h-9"
+              width={188}
+              height={86}
+              className="h-10 w-auto object-contain sm:h-11"
               priority
             />
           </Link>
