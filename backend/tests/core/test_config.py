@@ -75,3 +75,26 @@ def test_email_settings_have_safe_defaults() -> None:
     assert settings.public_app_url == "http://localhost:3000"
     assert settings.email_confirmation_ttl_seconds == 60 * 60 * 24
     assert settings.resend_api_key is None
+
+
+def test_session_ttl_defaults_to_one_hour() -> None:
+    settings = Settings(database_url="postgresql+psycopg://user:pass@db:5432/store")
+
+    assert settings.session_ttl_seconds == 60 * 60
+
+
+def test_session_ttl_allows_shorter_sessions() -> None:
+    settings = Settings(
+        database_url="postgresql+psycopg://user:pass@db:5432/store",
+        session_ttl_seconds=30 * 60,
+    )
+
+    assert settings.session_ttl_seconds == 30 * 60
+
+
+def test_session_ttl_rejects_more_than_one_hour() -> None:
+    with pytest.raises(ValidationError, match="60 minutes"):
+        Settings(
+            database_url="postgresql+psycopg://user:pass@db:5432/store",
+            session_ttl_seconds=(60 * 60) + 1,
+        )

@@ -184,6 +184,7 @@ def test_login_sets_session_and_csrf_cookies() -> None:
     assert client.cookies.get("fs_session") is not None
     assert client.cookies.get("fs_csrf") is not None
     assert "HttpOnly" in response.headers["set-cookie"]
+    assert "Max-Age=3600" in response.headers["set-cookie"]
 
 
 def test_me_returns_current_user_after_login() -> None:
