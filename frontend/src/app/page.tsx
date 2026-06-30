@@ -76,11 +76,11 @@ export default async function HomePage() {
             <Reveal className="relative z-10 flex flex-col items-start gap-6">
               <div className="flex items-center gap-3">
                 <Image
-                  src="/FreeStyleLogo.webp"
+                  src="/brand/fs-mark.webp"
                   alt=""
-                  width={48}
-                  height={48}
-                  className="rounded-full border border-white/15 bg-white object-contain shadow-[0_0_28px_rgba(198,255,0,0.25)]"
+                  width={64}
+                  height={42}
+                  className="h-10 w-auto object-contain drop-shadow-[0_0_18px_rgba(198,255,0,0.25)]"
                   priority
                 />
                 <p className="text-sm font-bold tracking-[0.3em] text-primary">NUEVA TEMPORADA</p>
