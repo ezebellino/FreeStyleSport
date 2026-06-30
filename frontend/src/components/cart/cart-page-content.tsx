@@ -35,6 +35,8 @@ import {
   listMyOrders,
   orderItemVariantDescription,
   orderGiftCouponCode,
+  orderPaymentProofUrl,
+  orderPaymentReference,
   type OrderCreatePayload,
   type OrderRead,
 } from "@/lib/orders"
@@ -162,6 +164,8 @@ function fulfillmentInstruction(fulfillmentMethod: OrderCreatePayload["fulfillme
 
 function buildOrderConfirmationMessage(order: OrderRead) {
   const giftCouponCode = orderGiftCouponCode(order)
+  const paymentReference = orderPaymentReference(order)
+  const paymentProofUrl = orderPaymentProofUrl(order)
   const itemLines = order.items
     .map((item) => {
       const variantDescription = orderItemVariantDescription(item)
@@ -177,6 +181,8 @@ function buildOrderConfirmationMessage(order: OrderRead) {
     `Total: ${formatCartPrice(Number(order.total))}`,
     hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
     giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
+    paymentReference ? `Referencia de pago: ${paymentReference}.` : null,
+    paymentProofUrl ? `Comprobante: ${paymentProofUrl}` : null,
     "Quedo atento/a para confirmar pago y disponibilidad.",
   ].filter(Boolean).join("\n")
 }
@@ -191,6 +197,8 @@ export function CartPageContent() {
     useState<OrderCreatePayload["payment_method"]>("to_confirm")
   const [fulfillmentMethod, setFulfillmentMethod] =
     useState<OrderCreatePayload["fulfillment_method"]>("pickup")
+  const [paymentReference, setPaymentReference] = useState("")
+  const [paymentProofUrl, setPaymentProofUrl] = useState("")
   const [notes, setNotes] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [createdOrder, setCreatedOrder] = useState<OrderRead | null>(null)
@@ -210,6 +218,8 @@ export function CartPageContent() {
   const shouldShowPaymentProfile =
     Boolean(paymentProfile?.is_active) &&
     ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
+  const shouldShowPaymentSubmission =
+    ["transfer", "mercado_pago", "wallet", "card"].includes(paymentMethod)
   const welcomeDiscount = isWelcomeDiscountEligible ? Math.round(total * 0.1) : 0
   const checkoutTotal = Math.max(0, total - welcomeDiscount)
   const hasFreeShippingPreview = checkoutTotal > FREE_SHIPPING_THRESHOLD
@@ -292,6 +302,8 @@ export function CartPageContent() {
         customer_email: customerEmail.trim() || undefined,
         payment_method: paymentMethod,
         fulfillment_method: fulfillmentMethod,
+        payment_reference: paymentReference.trim() || undefined,
+        payment_proof_url: paymentProofUrl.trim() || undefined,
         notes: notes.trim() || undefined,
         items: items.map((item) => ({
           product_slug: item.slug,
@@ -315,6 +327,8 @@ export function CartPageContent() {
   if (createdOrder) {
     const code = orderCode(createdOrder.id)
     const giftCouponCode = orderGiftCouponCode(createdOrder)
+    const createdPaymentReference = orderPaymentReference(createdOrder)
+    const createdPaymentProofUrl = orderPaymentProofUrl(createdOrder)
 
     return (
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col justify-center gap-6 px-4 py-16 md:px-8">
@@ -374,6 +388,11 @@ export function CartPageContent() {
               {giftCouponCode ? (
                 <p className="mt-1 text-xs font-bold text-primary">
                   Ganaste un bono 10% para tu próxima compra: {giftCouponCode}.
+                </p>
+              ) : null}
+              {createdPaymentReference || createdPaymentProofUrl ? (
+                <p className="mt-1 text-xs font-bold text-primary">
+                  Comprobante o referencia recibida. El local revisa el pago antes de preparar.
                 </p>
               ) : null}
             </div>
@@ -714,6 +733,39 @@ export function CartPageContent() {
                 </label>
               ))}
             </div>
+
+            {shouldShowPaymentSubmission ? (
+              <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4">
+                <p className="text-sm font-black text-primary">¿Ya pagaste o tenés comprobante?</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Cargá una referencia o link del comprobante para que el local pueda revisar el pago
+                  más rápido. Si todavía no pagaste, dejalo vacío.
+                </p>
+                <div className="mt-3 grid gap-3">
+                  <label className="space-y-2" htmlFor="payment-reference">
+                    <span className="text-sm font-semibold">Referencia de pago opcional</span>
+                    <input
+                      id="payment-reference"
+                      className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                      value={paymentReference}
+                      onChange={(event) => setPaymentReference(event.target.value)}
+                      placeholder="Ej: alias usado, operación, últimos 4 dígitos"
+                    />
+                  </label>
+                  <label className="space-y-2" htmlFor="payment-proof-url">
+                    <span className="text-sm font-semibold">Link del comprobante opcional</span>
+                    <input
+                      id="payment-proof-url"
+                      className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                      value={paymentProofUrl}
+                      onChange={(event) => setPaymentProofUrl(event.target.value)}
+                      placeholder="Pegá un link de imagen o archivo si ya lo tenés"
+                      type="url"
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border bg-background/45 p-4">

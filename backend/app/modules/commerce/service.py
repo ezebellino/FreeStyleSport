@@ -235,6 +235,27 @@ def order_commercial_benefits(final_total: Decimal) -> dict[str, object]:
     return benefits
 
 
+def order_payment_submission_metadata(
+    *,
+    payment_reference: str | None,
+    payment_proof_url: str | None,
+) -> dict[str, object]:
+    reference = payment_reference.strip() if payment_reference else ""
+    proof_url = payment_proof_url.strip() if payment_proof_url else ""
+    if not reference and not proof_url:
+        return {}
+
+    metadata: dict[str, object] = {
+        "payment_submitted": True,
+        "payment_review_required": True,
+    }
+    if reference:
+        metadata["payment_reference"] = reference
+    if proof_url:
+        metadata["payment_proof_url"] = proof_url
+    return metadata
+
+
 def _order_variant_quantities(order: Order) -> dict[str, int]:
     quantities: dict[str, int] = {}
     for item in order.items:
@@ -622,6 +643,11 @@ async def create_order(
     total = _money(subtotal - welcome_discount)
     order_metadata: dict[str, object] = {"source": "storefront_cart"}
     order_metadata.update(order_commercial_benefits(total))
+    payment_submission = order_payment_submission_metadata(
+        payment_reference=payload.payment_reference,
+        payment_proof_url=payload.payment_proof_url,
+    )
+    order_metadata.update(payment_submission)
     if welcome_discount > 0:
         order_metadata.update(
             {
@@ -636,7 +662,7 @@ async def create_order(
     order = Order(
         tenant_id=tenant.id,
         status="pending",
-        payment_status="unpaid",
+        payment_status="pending" if payment_submission else "unpaid",
         customer_name=payload.customer_name,
         customer_email=effective_customer_email,
         customer_phone=payload.customer_phone,

@@ -10,6 +10,8 @@ export type OrderCreatePayload = {
   customer_phone?: string
   payment_method: "to_confirm" | "cash" | "transfer" | "mercado_pago" | "card" | "wallet"
   fulfillment_method: "pickup" | "shipping" | "local_payment"
+  payment_reference?: string
+  payment_proof_url?: string
   notes?: string
   items: Array<{
     product_slug: string
@@ -88,6 +90,20 @@ export function hasFreeShippingBenefit(order: OrderRead) {
 export function orderGiftCouponCode(order: OrderRead) {
   const code = order.metadata?.gift_coupon_code
   return typeof code === "string" && code.trim() ? code.trim() : null
+}
+
+export function orderPaymentReference(order: OrderRead) {
+  const reference = order.metadata?.payment_reference
+  return typeof reference === "string" && reference.trim() ? reference.trim() : null
+}
+
+export function orderPaymentProofUrl(order: OrderRead) {
+  const proofUrl = order.metadata?.payment_proof_url
+  return typeof proofUrl === "string" && proofUrl.trim() ? proofUrl.trim() : null
+}
+
+export function hasPaymentSubmission(order: OrderRead) {
+  return order.metadata?.payment_submitted === true
 }
 
 export async function createStoreOrder(payload: OrderCreatePayload): Promise<OrderRead> {

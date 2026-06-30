@@ -24,6 +24,8 @@ import {
   hasFreeShippingBenefit,
   orderGiftCouponCode,
   orderItemVariantDescription,
+  orderPaymentProofUrl,
+  orderPaymentReference,
   type OrderRead,
 } from "@/lib/orders"
 import { getPaymentProfile } from "@/lib/payment-profile"
@@ -230,6 +232,8 @@ export default async function OrderTrackingPage({
         : 0
   const hasFreeShipping = hasFreeShippingBenefit(order)
   const giftCouponCode = orderGiftCouponCode(order)
+  const paymentReference = orderPaymentReference(order)
+  const paymentProofUrl = orderPaymentProofUrl(order)
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
@@ -429,6 +433,33 @@ export default async function OrderTrackingPage({
             <div className="rounded-2xl border bg-secondary/40 p-3 text-sm">
               <p className="font-semibold">Comentario</p>
               <p className="mt-1 text-muted-foreground">{order.notes}</p>
+            </div>
+          ) : null}
+
+          {paymentReference || paymentProofUrl ? (
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm leading-6">
+              <p className="font-black text-primary">Pago informado</p>
+              <div className="mt-2 grid gap-1 text-muted-foreground">
+                {paymentReference ? <p>Referencia: {paymentReference}</p> : null}
+                {paymentProofUrl ? (
+                  <p>
+                    Comprobante:{" "}
+                    <a
+                      className="font-semibold text-primary underline-offset-4 hover:underline"
+                      href={paymentProofUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      abrir link
+                    </a>
+                  </p>
+                ) : null}
+              </div>
+              {order.payment_status !== "paid" ? (
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  El local revisa el pago antes de preparar el pedido.
+                </p>
+              ) : null}
             </div>
           ) : null}
 

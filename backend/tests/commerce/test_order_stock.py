@@ -11,6 +11,7 @@ from app.modules.commerce.service import (
     _reserve_variant_quantities,
     calculate_welcome_discount,
     order_commercial_benefits,
+    order_payment_submission_metadata,
 )
 
 
@@ -106,3 +107,21 @@ def test_order_commercial_benefits_require_exceeding_gift_bonus_threshold() -> N
     assert benefits_above_threshold["free_shipping"] is True
     assert benefits_above_threshold["gift_coupon_code"] == GIFT_BONUS_CODE
     assert benefits_above_threshold["gift_coupon_rate"] == 0.1
+
+
+def test_order_payment_submission_metadata_tracks_reference_and_proof() -> None:
+    metadata = order_payment_submission_metadata(
+        payment_reference="  MP-12345  ",
+        payment_proof_url="  https://example.com/comprobante.jpg  ",
+    )
+
+    assert metadata["payment_submitted"] is True
+    assert metadata["payment_review_required"] is True
+    assert metadata["payment_reference"] == "MP-12345"
+    assert metadata["payment_proof_url"] == "https://example.com/comprobante.jpg"
+
+
+def test_order_payment_submission_metadata_ignores_empty_values() -> None:
+    metadata = order_payment_submission_metadata(payment_reference=" ", payment_proof_url=None)
+
+    assert metadata == {}

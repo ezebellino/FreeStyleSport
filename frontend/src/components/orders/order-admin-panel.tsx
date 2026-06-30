@@ -23,9 +23,12 @@ import { formatCartPrice } from "@/lib/cart"
 import {
   GIFT_BONUS_CODE,
   hasFreeShippingBenefit,
+  hasPaymentSubmission,
   listAdminOrders,
   orderGiftCouponCode,
   orderItemVariantDescription,
+  orderPaymentProofUrl,
+  orderPaymentReference,
   type OrderRead,
   updateAdminOrderPaymentStatus,
   updateAdminOrderStatus,
@@ -98,6 +101,8 @@ function buildWhatsAppHref(order: OrderRead) {
   if (!phone) return null
 
   const giftCouponCode = orderGiftCouponCode(order)
+  const paymentReference = orderPaymentReference(order)
+  const paymentProofUrl = orderPaymentProofUrl(order)
   const itemLines = order.items
     .map((item) => {
       const variant = orderItemVariantDescription(item)
@@ -112,6 +117,8 @@ function buildWhatsAppHref(order: OrderRead) {
     `Total: ${formatCartPrice(Number(order.total))}`,
     hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
     giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
+    paymentReference ? `Referencia de pago: ${paymentReference}.` : null,
+    paymentProofUrl ? `Comprobante: ${paymentProofUrl}` : null,
     `Estado: ${statusLabel(order.status)} / ${paymentStatusLabel(order.payment_status)}`,
   ].filter(Boolean).join("\n")
 
@@ -353,6 +360,9 @@ export function OrderAdminPanel() {
             const PriorityIcon = priority.icon
             const hasFreeShipping = hasFreeShippingBenefit(order)
             const giftCouponCode = orderGiftCouponCode(order)
+            const paymentReference = orderPaymentReference(order)
+            const paymentProofUrl = orderPaymentProofUrl(order)
+            const hasSubmittedPayment = hasPaymentSubmission(order)
 
             return (
               <article key={order.id} className="overflow-hidden rounded-[2rem] border bg-background/35">
@@ -375,6 +385,9 @@ export function OrderAdminPanel() {
                       {hasFreeShipping ? <Badge variant="secondary">Envío gratis</Badge> : null}
                       {giftCouponCode ? (
                         <Badge variant="secondary">Bono {giftCouponCode || GIFT_BONUS_CODE}</Badge>
+                      ) : null}
+                      {hasSubmittedPayment ? (
+                        <Badge variant="secondary">Comprobante recibido</Badge>
                       ) : null}
                     </div>
                     <p className="text-sm leading-6 text-muted-foreground">{operationalNote(order)}</p>
@@ -415,6 +428,38 @@ export function OrderAdminPanel() {
                         <p className="text-xs text-muted-foreground">Buenos Aires 68, Dolores</p>
                       </div>
                     </div>
+
+                    {hasSubmittedPayment || paymentReference || paymentProofUrl ? (
+                      <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm leading-6">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-black text-primary">Pago informado por el cliente</p>
+                          <Badge variant={order.payment_status === "paid" ? "default" : "secondary"}>
+                            {paymentStatusLabel(order.payment_status)}
+                          </Badge>
+                        </div>
+                        <div className="mt-2 grid gap-1 text-muted-foreground">
+                          {paymentReference ? <p>Referencia: {paymentReference}</p> : null}
+                          {paymentProofUrl ? (
+                            <p>
+                              Comprobante:{" "}
+                              <a
+                                className="font-semibold text-primary underline-offset-4 hover:underline"
+                                href={paymentProofUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                abrir link
+                              </a>
+                            </p>
+                          ) : null}
+                        </div>
+                        {order.payment_status !== "paid" ? (
+                          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                            Revisá el comprobante o movimiento antes de confirmar el pago.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     <div className="space-y-2">
                       {order.items.map((item) => {
