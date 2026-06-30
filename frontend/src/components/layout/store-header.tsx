@@ -20,7 +20,13 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { showError, showSuccess } from "@/lib/alerts"
-import { AuthApiError, getCurrentUser, logoutUser, type PublicUser } from "@/lib/auth"
+import {
+  AuthApiError,
+  authSessionChangedEvent,
+  getCurrentUser,
+  logoutUser,
+  type PublicUser,
+} from "@/lib/auth"
 
 const navItems = [
   ["Hombre", "/productos?linea=hombre"],
@@ -88,10 +94,18 @@ export function StoreHeader() {
       }
     }
 
+    function handleSessionChanged() {
+      void loadUser()
+    }
+
     void loadUser()
+    window.addEventListener(authSessionChangedEvent, handleSessionChanged)
+    window.addEventListener("focus", handleSessionChanged)
 
     return () => {
       isMounted = false
+      window.removeEventListener(authSessionChangedEvent, handleSessionChanged)
+      window.removeEventListener("focus", handleSessionChanged)
     }
   }, [])
 

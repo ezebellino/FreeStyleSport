@@ -58,6 +58,15 @@ export function buildCsrfHeaders(cookieHeader: string): Record<string, string> {
 }
 
 const csrfStorageKey = "fs_csrf_token"
+export const authSessionChangedEvent = "freestyle:auth-session-changed"
+
+export function notifyAuthSessionChanged() {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  window.dispatchEvent(new Event(authSessionChangedEvent))
+}
 
 async function getCsrfHeaders(): Promise<Record<string, string>> {
   const cookieHeaders = buildCsrfHeaders(document.cookie)
@@ -111,7 +120,9 @@ export async function loginUser(email: string, password: string): Promise<Public
     credentials: "include",
     body: JSON.stringify({ email, password }),
   })
-  return parseAuthResponse<PublicUser>(response)
+  const user = await parseAuthResponse<PublicUser>(response)
+  notifyAuthSessionChanged()
+  return user
 }
 
 export async function logoutUser(): Promise<void> {
@@ -123,6 +134,7 @@ export async function logoutUser(): Promise<void> {
 
   await parseAuthResponse<{ status: string }>(response)
   window.sessionStorage.removeItem(csrfStorageKey)
+  notifyAuthSessionChanged()
 }
 
 export async function getCurrentUser(): Promise<PublicUser | null> {
