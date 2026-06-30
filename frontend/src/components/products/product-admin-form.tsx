@@ -13,6 +13,7 @@ import { type FormEvent, useMemo, useState } from "react"
 import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { showError, showSuccess } from "@/lib/alerts"
 import {
   createAdminProduct,
   getProductAudienceValue,
@@ -371,6 +372,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
     })
     if (validationError) {
       setError(validationError)
+      void showError("Revisá el producto", validationError)
       return
     }
 
@@ -401,7 +403,16 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
       const savedProduct = product
         ? await updateAdminProduct(product.id, payload)
         : await createAdminProduct(payload)
-      setMessage(product ? "Producto actualizado." : "Producto guardado. Ya puede aparecer en la tienda.")
+      const successMessage = product
+        ? "Producto actualizado."
+        : "Producto guardado. Ya puede aparecer en la tienda."
+      setMessage(successMessage)
+      void showSuccess(
+        product ? "Producto actualizado" : "Producto creado",
+        product
+          ? "Los cambios quedaron guardados correctamente."
+          : "Ya podés verlo en el panel y publicarlo en la tienda.",
+      )
       onSaved?.(savedProduct)
       if (!product) {
         event.currentTarget.reset()
@@ -409,7 +420,9 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         setImageUrls([""])
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No pudimos guardar los cambios")
+      const errorMessage = caught instanceof Error ? caught.message : "No pudimos guardar los cambios"
+      setError(errorMessage)
+      void showError("No pudimos guardar el producto", errorMessage)
     } finally {
       setIsSubmitting(false)
     }
