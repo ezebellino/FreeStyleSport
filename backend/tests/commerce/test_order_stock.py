@@ -1,9 +1,15 @@
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 
 from app.core.errors import ApiError
-from app.modules.commerce.service import _release_variant_quantities, _reserve_variant_quantities
+from app.modules.commerce.service import (
+    WELCOME_COUPON_CODE,
+    _release_variant_quantities,
+    _reserve_variant_quantities,
+    calculate_welcome_discount,
+)
 
 
 def test_reserve_order_stock_decrements_variant_stock() -> None:
@@ -48,3 +54,34 @@ def test_reserve_order_stock_does_not_partially_decrement_when_one_variant_fails
 
     assert first_variant.stock_quantity == 3
     assert second_variant.stock_quantity == 1
+
+
+def test_welcome_discount_is_ten_percent_for_first_registered_order() -> None:
+    discount = calculate_welcome_discount(
+        has_existing_order=False,
+        customer_email="buyer@example.com",
+        subtotal=Decimal("10000.00"),
+    )
+
+    assert WELCOME_COUPON_CODE == "BIENVENIDA10"
+    assert discount == Decimal("1000.00")
+
+
+def test_welcome_discount_is_not_reused_for_existing_customer_order() -> None:
+    discount = calculate_welcome_discount(
+        has_existing_order=True,
+        customer_email="buyer@example.com",
+        subtotal=Decimal("10000.00"),
+    )
+
+    assert discount == Decimal("0.00")
+
+
+def test_welcome_discount_requires_registered_customer_email() -> None:
+    discount = calculate_welcome_discount(
+        has_existing_order=False,
+        customer_email=None,
+        subtotal=Decimal("10000.00"),
+    )
+
+    assert discount == Decimal("0.00")

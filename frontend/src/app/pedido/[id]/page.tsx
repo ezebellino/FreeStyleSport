@@ -215,6 +215,12 @@ export default async function OrderTrackingPage({
   const createdAt = formatOrderDate(order.created_at)
   const shouldShowPaymentProfile =
     Boolean(paymentProfile?.is_active) && canShowPaymentProfile(order.payment_method)
+  const discountTotal =
+    typeof order.metadata?.discount_total === "string"
+      ? Number(order.metadata.discount_total)
+      : typeof order.metadata?.discount_total === "number"
+        ? order.metadata.discount_total
+        : 0
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
@@ -447,6 +453,18 @@ export default async function OrderTrackingPage({
 
           <div className="rounded-2xl border bg-secondary/40 p-4">
             <p className="text-sm font-semibold">Total estimado</p>
+            {order.metadata?.coupon_code === "BIENVENIDA10" && discountTotal > 0 ? (
+              <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                <div className="flex justify-between gap-3">
+                  <span>Subtotal</span>
+                  <span>{formatCartPrice(Number(order.subtotal))}</span>
+                </div>
+                <div className="flex justify-between gap-3 font-bold text-primary">
+                  <span>Bienvenida 10%</span>
+                  <span>-{formatCartPrice(discountTotal)}</span>
+                </div>
+              </div>
+            ) : null}
             <p className="mt-1 text-3xl font-black">{formatCartPrice(Number(order.total))}</p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               El envío, si corresponde, se coordina con el local antes de cerrar la compra.

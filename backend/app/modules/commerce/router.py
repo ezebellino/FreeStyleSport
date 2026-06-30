@@ -58,6 +58,21 @@ async def require_store_admin(
 StoreAdminDependency = Annotated[PublicUser, Depends(require_store_admin)]
 
 
+async def optional_current_user(
+    request: Request,
+    settings: Settings,
+    identity_service: IdentityService,
+) -> PublicUser | None:
+    try:
+        return await identity_service.current_user(
+            request.cookies.get(settings.session_cookie_name)
+        )
+    except ApiError as exc:
+        if exc.status_code == 401:
+            return None
+        raise
+
+
 def _cloudinary_signature(settings: Settings) -> CloudinarySignatureRead:
     if (
         not settings.cloudinary_cloud_name
@@ -108,8 +123,15 @@ async def order_create(
     payload: OrderCreate,
     request: Request,
     session: SessionDependency,
+    settings: SettingsDependency,
+    identity_service: IdentityServiceDependency,
 ) -> OrderRead:
-    order = await create_order(session, payload)
+    user = await optional_current_user(request, settings, identity_service)
+    order = await create_order(
+        session,
+        payload,
+        registered_customer_email=user.email if user and user.role == "customer" else None,
+    )
     await record_audit_event(session, request, "commerce.order_created", None)
     await session.commit()
     return order
