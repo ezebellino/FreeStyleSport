@@ -146,13 +146,13 @@ export function StoreHeader() {
 
           <Link href="/" aria-label="FreeStyle" className="flex items-center gap-2">
             <Image
-              src="/FreeStyleLogo.webp"
+              src="/brand/freestyle-logo.webp"
               alt=""
-              width={36}
-              height={36}
-              className="rounded-full bg-white object-contain"
+              width={132}
+              height={44}
+              className="h-8 w-auto object-contain sm:h-9"
+              priority
             />
-            <span className="font-display text-xl font-black italic tracking-tight">FreeStyle</span>
           </Link>
 
           <nav className="ml-6 hidden items-center gap-1 md:flex">
