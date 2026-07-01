@@ -5,9 +5,11 @@ import {
   CheckCircle2Icon,
   ClockIcon,
   CreditCardIcon,
+  FilterIcon,
   MessageCircleIcon,
   PackageCheckIcon,
   RefreshCwIcon,
+  SearchIcon,
   TruckIcon,
   UserIcon,
   XCircleIcon,
@@ -19,6 +21,7 @@ import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingState } from "@/components/ui/loading-state"
+import { showError, showSuccess } from "@/lib/alerts"
 import { formatCartPrice } from "@/lib/cart"
 import {
   GIFT_BONUS_CODE,
@@ -59,6 +62,22 @@ const paymentMethodLabels: Record<string, string> = {
   card: "Tarjeta",
   wallet: "Billetera virtual",
 }
+
+const statusFilterOptions = [
+  { value: "all", label: "Todos" },
+  { value: "active", label: "Activos" },
+  ...statusOptions.map((option) => ({ value: option.value, label: option.label })),
+] as const
+
+const paymentFilterOptions = [
+  { value: "all", label: "Todos los pagos" },
+  ...paymentStatusOptions.map((option) => ({ value: option.value, label: option.label })),
+] as const
+
+const paymentMethodFilterOptions = [
+  { value: "all", label: "Todos los métodos" },
+  ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
+] as const
 
 const fulfillmentLabels: Record<string, string> = {
   pickup: "Retiro en local",
@@ -178,12 +197,47 @@ function orderItemCount(order: OrderRead) {
   return order.items.reduce((total, item) => total + item.quantity, 0)
 }
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+}
+
+function orderSearchText(order: OrderRead) {
+  return normalizeSearchText(
+    [
+      order.id,
+      orderCode(order.id),
+      order.customer_name,
+      order.customer_email,
+      order.customer_phone,
+      paymentMethodLabels[order.payment_method],
+      fulfillmentLabels[order.fulfillment_method],
+      statusLabel(order.status),
+      paymentStatusLabel(order.payment_status),
+      order.items
+        .map((item) =>
+          [item.product_name, item.product_slug, orderItemVariantDescription(item)].filter(Boolean).join(" "),
+        )
+        .join(" "),
+    ]
+      .filter(Boolean)
+      .join(" "),
+  )
+}
+
 export function OrderAdminPanel() {
   const [orders, setOrders] = useState<OrderRead[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const [cancelCandidate, setCancelCandidate] = useState<OrderRead | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<(typeof statusFilterOptions)[number]["value"]>("active")
+  const [paymentFilter, setPaymentFilter] = useState<(typeof paymentFilterOptions)[number]["value"]>("all")
+  const [paymentMethodFilter, setPaymentMethodFilter] =
+    useState<(typeof paymentMethodFilterOptions)[number]["value"]>("all")
   const [error, setError] = useState<string | null>(null)
 
   const metrics = useMemo(() => {
@@ -210,6 +264,36 @@ export function OrderAdminPanel() {
       }),
     [orders],
   )
+
+  const filteredOrders = useMemo(() => {
+    const normalizedSearchTerm = normalizeSearchText(searchTerm.trim())
+
+    return sortedOrders.filter((order) => {
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active"
+          ? !["cancelled", "delivered"].includes(order.status)
+          : order.status === statusFilter)
+      const matchesPayment = paymentFilter === "all" || order.payment_status === paymentFilter
+      const matchesMethod = paymentMethodFilter === "all" || order.payment_method === paymentMethodFilter
+      const matchesSearch = !normalizedSearchTerm || orderSearchText(order).includes(normalizedSearchTerm)
+
+      return matchesStatus && matchesPayment && matchesMethod && matchesSearch
+    })
+  }, [paymentFilter, paymentMethodFilter, searchTerm, sortedOrders, statusFilter])
+
+  const hasActiveFilters =
+    searchTerm.trim() !== "" ||
+    statusFilter !== "active" ||
+    paymentFilter !== "all" ||
+    paymentMethodFilter !== "all"
+
+  function resetFilters() {
+    setSearchTerm("")
+    setStatusFilter("active")
+    setPaymentFilter("all")
+    setPaymentMethodFilter("all")
+  }
 
   async function loadOrders(refresh = false) {
     setError(null)
@@ -252,9 +336,16 @@ export function OrderAdminPanel() {
     setUpdatingOrderId(order.id)
     setError(null)
     try {
-      replaceOrder(await updateAdminOrderStatus(order.id, status))
+      const updatedOrder = await updateAdminOrderStatus(order.id, status)
+      replaceOrder(updatedOrder)
+      void showSuccess(
+        "Pedido actualizado",
+        `El pedido #${orderCode(order.id)} quedó como ${statusLabel(updatedOrder.status).toLowerCase()}.`,
+      )
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No pudimos actualizar la reserva")
+      const message = caught instanceof Error ? caught.message : "No pudimos actualizar la reserva"
+      setError(message)
+      void showError("No pudimos actualizar la reserva", message)
     } finally {
       setUpdatingOrderId(null)
     }
@@ -264,9 +355,16 @@ export function OrderAdminPanel() {
     setUpdatingOrderId(orderId)
     setError(null)
     try {
-      replaceOrder(await updateAdminOrderPaymentStatus(orderId, paymentStatus))
+      const updatedOrder = await updateAdminOrderPaymentStatus(orderId, paymentStatus)
+      replaceOrder(updatedOrder)
+      void showSuccess(
+        "Pago actualizado",
+        `El pedido #${orderCode(orderId)} quedó como ${paymentStatusLabel(updatedOrder.payment_status).toLowerCase()}.`,
+      )
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No pudimos actualizar el pago")
+      const message = caught instanceof Error ? caught.message : "No pudimos actualizar el pago"
+      setError(message)
+      void showError("No pudimos actualizar el pago", message)
     } finally {
       setUpdatingOrderId(null)
     }
@@ -340,6 +438,94 @@ export function OrderAdminPanel() {
         </article>
       </div>
 
+      <div className="space-y-3 rounded-3xl border bg-background/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FilterIcon className="size-4 text-primary" aria-hidden="true" />
+            <p className="text-sm font-black">Buscar y filtrar pedidos</p>
+          </div>
+          <Badge variant="secondary">
+            {filteredOrders.length} de {orders.length}
+          </Badge>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[minmax(16rem,1.5fr)_repeat(3,minmax(10rem,1fr))_auto]">
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              Pedido, cliente, contacto, producto o talle
+            </span>
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="Ej: #A1B2C3D4, Nike, 41, Juan..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </div>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Estado</span>
+            <select
+              className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as (typeof statusFilterOptions)[number]["value"])
+              }
+            >
+              {statusFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Pago</span>
+            <select
+              className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
+              value={paymentFilter}
+              onChange={(event) =>
+                setPaymentFilter(event.target.value as (typeof paymentFilterOptions)[number]["value"])
+              }
+            >
+              {paymentFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Método</span>
+            <select
+              className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
+              value={paymentMethodFilter}
+              onChange={(event) =>
+                setPaymentMethodFilter(
+                  event.target.value as (typeof paymentMethodFilterOptions)[number]["value"],
+                )
+              }
+            >
+              {paymentMethodFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="flex items-end">
+            <Button type="button" variant="secondary" disabled={!hasActiveFilters} onClick={resetFilters}>
+              Limpiar
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {error ? (
         <p className="rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -350,9 +536,13 @@ export function OrderAdminPanel() {
         <div className="rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
           Todavía no hay reservas cargadas.
         </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
+          No encontramos pedidos con esos filtros. Probá limpiar la búsqueda o revisar otro estado.
+        </div>
       ) : (
         <div className="space-y-4">
-          {sortedOrders.map((order) => {
+          {filteredOrders.map((order) => {
             const isUpdating = updatingOrderId === order.id
             const nextAction = nextStatusAction(order)
             const whatsappHref = buildWhatsAppHref(order)

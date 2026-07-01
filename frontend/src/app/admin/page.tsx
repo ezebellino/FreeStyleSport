@@ -22,6 +22,20 @@ export default function AdminPage() {
 
       <AdminOverview />
 
+      <div className="rounded-[2rem] border bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black">Tesorería y venta inteligente</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Recaudación web, productos más vendidos, cobros por método y alertas de reposición.
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/admin/tesoreria">Ver números del negocio</Link>
+          </Button>
+        </div>
+      </div>
+
       <PaymentProfilePanel />
 
       <div className="space-y-4">
