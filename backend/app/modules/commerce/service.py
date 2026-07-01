@@ -5,7 +5,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from urllib.parse import parse_qsl
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -43,6 +43,21 @@ MONEY_QUANT = Decimal("0.01")
 MERCADO_PAGO_API_URL = "https://api.mercadopago.com"
 AUDIENCE_FILTERS = {"hombre", "mujer", "unisex", "ninos", "bebes", "kids"}
 PAID_REQUIRED_ORDER_STATUSES = {"preparing", "ready", "delivered"}
+DEFAULT_PUBLIC_LIMIT = 60
+DEFAULT_ADMIN_LIMIT = 200
+MAX_PUBLIC_LIMIT = 120
+MAX_ADMIN_LIMIT = 300
+
+
+def _bounded_pagination(limit: int, offset: int, max_limit: int) -> tuple[int, int]:
+    safe_limit = min(max(1, limit), max_limit)
+    safe_offset = max(0, offset)
+    return safe_limit, safe_offset
+
+
+def _search_pattern(value: str | None) -> str | None:
+    normalized = (value or "").strip()
+    return f"%{normalized}%" if normalized else None
 STOCK_RELEASING_ORDER_STATUSES = {"cancelled"}
 CATEGORY_ALIASES = {
     "calzado": {"calzado", "calzados", "zapatillas"},
@@ -678,6 +693,9 @@ async def list_public_products(
     session: AsyncSession,
     category_slug: str | None = None,
     audience_slug: str | None = None,
+    search: str | None = None,
+    limit: int = DEFAULT_PUBLIC_LIMIT,
+    offset: int = 0,
 ) -> Sequence[Product]:
     tenant = await get_default_tenant(session)
     if tenant is None:
@@ -685,31 +703,68 @@ async def list_public_products(
     if category_slug in AUDIENCE_FILTERS and audience_slug is None:
         audience_slug = category_slug
         category_slug = None
+    safe_limit, safe_offset = _bounded_pagination(limit, offset, MAX_PUBLIC_LIMIT)
+    search_pattern = _search_pattern(search)
     statement = (
         select(Product)
         .options(*_product_options())
         .where(Product.tenant_id == tenant.id, Product.status == "published")
         .order_by(Product.created_at.desc())
     )
+    if search_pattern:
+        statement = statement.where(
+            or_(
+                Product.name.ilike(search_pattern),
+                Product.slug.ilike(search_pattern),
+                Product.description.ilike(search_pattern),
+                Product.brand.ilike(search_pattern),
+                Product.category.has(Category.name.ilike(search_pattern)),
+                Product.category.has(Category.slug.ilike(search_pattern)),
+            )
+        )
+    source_limit = min(MAX_ADMIN_LIMIT, safe_limit + safe_offset + 120)
+    statement = statement.limit(source_limit)
     result = await session.scalars(statement)
-    products = result.unique().all()
-    return [
+    products = [
         product
-        for product in products
+        for product in result.unique().all()
         if product_matches_catalog_filters(product, category_slug, audience_slug)
     ]
+    return products[safe_offset : safe_offset + safe_limit]
 
 
-async def list_admin_products(session: AsyncSession) -> Sequence[Product]:
+async def list_admin_products(
+    session: AsyncSession,
+    search: str | None = None,
+    status: str | None = None,
+    limit: int = DEFAULT_ADMIN_LIMIT,
+    offset: int = 0,
+) -> Sequence[Product]:
     tenant = await get_default_tenant(session)
     if tenant is None:
         return []
-    result = await session.scalars(
+    safe_limit, safe_offset = _bounded_pagination(limit, offset, MAX_ADMIN_LIMIT)
+    search_pattern = _search_pattern(search)
+    statement = (
         select(Product)
         .options(*_product_options())
         .where(Product.tenant_id == tenant.id)
         .order_by(Product.created_at.desc())
     )
+    if status and status != "all":
+        statement = statement.where(Product.status == status)
+    if search_pattern:
+        statement = statement.where(
+            or_(
+                Product.name.ilike(search_pattern),
+                Product.slug.ilike(search_pattern),
+                Product.description.ilike(search_pattern),
+                Product.brand.ilike(search_pattern),
+                Product.category.has(Category.name.ilike(search_pattern)),
+                Product.category.has(Category.slug.ilike(search_pattern)),
+            )
+        )
+    result = await session.scalars(statement.limit(safe_limit).offset(safe_offset))
     return result.unique().all()
 
 
@@ -1026,31 +1081,65 @@ async def create_order(
     return order
 
 
-async def list_admin_orders(session: AsyncSession) -> Sequence[Order]:
+async def list_admin_orders(
+    session: AsyncSession,
+    search: str | None = None,
+    status: str | None = None,
+    payment_status: str | None = None,
+    payment_method: str | None = None,
+    limit: int = DEFAULT_ADMIN_LIMIT,
+    offset: int = 0,
+) -> Sequence[Order]:
     tenant = await get_default_tenant(session)
     if tenant is None:
         return []
-    result = await session.scalars(
+    safe_limit, safe_offset = _bounded_pagination(limit, offset, MAX_ADMIN_LIMIT)
+    search_pattern = _search_pattern(search)
+    statement = (
         select(Order)
         .options(*_order_options())
         .where(Order.tenant_id == tenant.id)
         .order_by(Order.created_at.desc())
     )
+    if status and status != "all":
+        if status == "active":
+            statement = statement.where(Order.status.not_in(["cancelled", "delivered"]))
+        else:
+            statement = statement.where(Order.status == status)
+    if payment_status and payment_status != "all":
+        statement = statement.where(Order.payment_status == payment_status)
+    if payment_method and payment_method != "all":
+        statement = statement.where(Order.payment_method == payment_method)
+    if search_pattern:
+        statement = statement.where(
+            or_(
+                Order.id.ilike(search_pattern),
+                Order.customer_name.ilike(search_pattern),
+                Order.customer_email.ilike(search_pattern),
+                Order.customer_phone.ilike(search_pattern),
+            )
+        )
+    result = await session.scalars(statement.limit(safe_limit).offset(safe_offset))
     return result.unique().all()
 
 
 async def list_orders_by_customer_email(
     session: AsyncSession,
     customer_email: str,
+    limit: int = DEFAULT_PUBLIC_LIMIT,
+    offset: int = 0,
 ) -> Sequence[Order]:
     tenant = await get_default_tenant(session)
     if tenant is None:
         return []
+    safe_limit, safe_offset = _bounded_pagination(limit, offset, MAX_PUBLIC_LIMIT)
     result = await session.scalars(
         select(Order)
         .options(*_order_options())
         .where(Order.tenant_id == tenant.id, Order.customer_email == customer_email.lower())
         .order_by(Order.created_at.desc())
+        .limit(safe_limit)
+        .offset(safe_offset)
     )
     return result.unique().all()
 
