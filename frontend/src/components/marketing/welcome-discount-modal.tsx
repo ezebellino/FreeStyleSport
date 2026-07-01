@@ -10,11 +10,17 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth"
 
-const storageKey = "freestyle_welcome_discount_dismissed_v1"
+const storageKey = "freestyle_welcome_discount_dismissed_v2"
+const dismissedTtlMs = 1000 * 60 * 60 * 24 * 7
 const blockedPathPrefixes = ["/admin", "/login", "/registro", "/confirmar-cuenta", "/cuenta", "/perfil"]
 
 function shouldSkipPath(pathname: string) {
   return blockedPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
+function wasRecentlyDismissed() {
+  const dismissedAt = Number(window.localStorage.getItem(storageKey) ?? 0)
+  return Number.isFinite(dismissedAt) && Date.now() - dismissedAt < dismissedTtlMs
 }
 
 export function WelcomeDiscountModal() {
@@ -27,11 +33,13 @@ export function WelcomeDiscountModal() {
 
     async function checkVisibility() {
       if (shouldSkipPath(pathname)) {
+        setIsVisible(false)
         setHasChecked(true)
         return
       }
 
-      if (window.localStorage.getItem(storageKey) === "true") {
+      if (wasRecentlyDismissed()) {
+        setIsVisible(false)
         setHasChecked(true)
         return
       }
@@ -68,7 +76,7 @@ export function WelcomeDiscountModal() {
   }, [isVisible])
 
   function dismiss() {
-    window.localStorage.setItem(storageKey, "true")
+    window.localStorage.setItem(storageKey, String(Date.now()))
     setIsVisible(false)
   }
 
@@ -131,8 +139,8 @@ export function WelcomeDiscountModal() {
             <p className="text-sm font-black text-primary">Cupón de bienvenida</p>
             <p className="mt-1 font-mono text-2xl font-black tracking-[0.2em]">BIENVENIDA10</p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Próximo paso: lo conectamos al checkout para aplicarlo automáticamente a clientes
-              registrados.
+              Se aplica automáticamente en el checkout cuando comprás con tu cuenta por primera
+              vez.
             </p>
           </div>
 
