@@ -20,6 +20,8 @@ from app.modules.commerce.schemas import (
     ProductCreate,
     ProductRead,
     ProductUpdate,
+    PromotionSettingsRead,
+    PromotionSettingsUpdate,
 )
 from app.modules.commerce.service import (
     apply_mercado_pago_payment,
@@ -29,6 +31,7 @@ from app.modules.commerce.service import (
     get_mercado_pago_payment,
     get_order_by_id,
     get_payment_profile,
+    get_promotion_settings,
     get_public_product_by_slug,
     list_admin_orders,
     list_admin_products,
@@ -37,6 +40,7 @@ from app.modules.commerce.service import (
     update_order,
     update_payment_profile,
     update_product,
+    update_promotion_settings,
     validate_mercado_pago_webhook_signature,
 )
 from app.modules.identity.audit import record_audit_event
@@ -122,6 +126,11 @@ async def product_detail(slug: str, session: SessionDependency) -> ProductRead:
 @router.get("/payment-profile", response_model=PaymentProfileRead)
 async def payment_profile(session: SessionDependency) -> PaymentProfileRead:
     return await get_payment_profile(session)
+
+
+@router.get("/promotion-settings", response_model=PromotionSettingsRead)
+async def promotion_settings(session: SessionDependency) -> PromotionSettingsRead:
+    return await get_promotion_settings(session)
 
 
 @router.post("/orders", response_model=OrderRead, status_code=201)
@@ -236,6 +245,32 @@ async def admin_update_payment_profile(
     )
     await session.commit()
     return payment_profile
+
+
+@router.get("/admin/promotion-settings", response_model=PromotionSettingsRead)
+async def admin_promotion_settings(
+    session: SessionDependency,
+    admin: StoreAdminDependency,
+) -> PromotionSettingsRead:
+    return await get_promotion_settings(session)
+
+
+@router.put("/admin/promotion-settings", response_model=PromotionSettingsRead)
+async def admin_update_promotion_settings(
+    payload: PromotionSettingsUpdate,
+    request: Request,
+    session: SessionDependency,
+    admin: StoreAdminDependency,
+) -> PromotionSettingsRead:
+    promotion_settings = await update_promotion_settings(session, payload)
+    await record_audit_event(
+        session,
+        request,
+        "commerce.promotion_settings_updated",
+        getattr(admin, "id", None),
+    )
+    await session.commit()
+    return promotion_settings
 
 
 @router.get("/admin/orders", response_model=list[OrderRead])

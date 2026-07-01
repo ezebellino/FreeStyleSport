@@ -31,6 +31,37 @@ class PaymentProfileRead(PaymentProfileBase):
     id: str | None = None
 
 
+class PromotionSettingsBase(BaseModel):
+    hero_badge: str | None = Field(default="Nueva temporada", max_length=120)
+    hero_title: str | None = Field(default="Promos FreeStyle", max_length=200)
+    hero_description: str | None = Field(
+        default="Beneficios activos para comprar más fácil en la tienda.",
+        max_length=1000,
+    )
+    welcome_coupon_enabled: bool = True
+    welcome_coupon_code: str = Field(default="BIENVENIDA10", min_length=1, max_length=40)
+    welcome_discount_rate: Decimal = Field(default=Decimal("0.10"), ge=0, le=1)
+    free_shipping_enabled: bool = True
+    free_shipping_threshold: Decimal = Field(default=Decimal("100000.00"), ge=0)
+    gift_bonus_enabled: bool = True
+    gift_bonus_threshold: Decimal = Field(default=Decimal("200000.00"), ge=0)
+    gift_bonus_code: str = Field(default="PROXIMA10", min_length=1, max_length=40)
+    gift_bonus_rate: Decimal = Field(default=Decimal("0.10"), ge=0, le=1)
+    payment_promotions: str | None = Field(default=None, max_length=1000)
+    checkout_message: str | None = Field(default=None, max_length=1000)
+    is_active: bool = True
+
+
+class PromotionSettingsUpdate(PromotionSettingsBase):
+    pass
+
+
+class PromotionSettingsRead(PromotionSettingsBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str | None = None
+
+
 class CategoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
