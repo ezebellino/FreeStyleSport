@@ -4,6 +4,7 @@ import {
   AlertTriangleIcon,
   CheckCircle2Icon,
   ClockIcon,
+  ClipboardIcon,
   CreditCardIcon,
   FilterIcon,
   MessageCircleIcon,
@@ -88,6 +89,11 @@ const fulfillmentLabels: Record<string, string> = {
   local_payment: "Pago en el local",
 }
 
+const fulfillmentFilterOptions = [
+  { value: "all", label: "Todas las entregas" },
+  ...Object.entries(fulfillmentLabels).map(([value, label]) => ({ value, label })),
+] as const
+
 function statusLabel(value: string) {
   return statusOptions.find((option) => option.value === value)?.label ?? value
 }
@@ -152,6 +158,35 @@ function buildWhatsAppHref(order: OrderRead) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
 }
 
+function buildShippingClipboardText(order: OrderRead) {
+  const shippingDetails = orderShippingDetails(order)
+  const itemLines = order.items
+    .map((item) => {
+      const variant = orderItemVariantDescription(item)
+      return `- ${item.quantity} x ${item.product_name}${variant ? ` (${variant})` : ""}`
+    })
+    .join("\n")
+
+  return [
+    `Pedido #${orderCode(order.id)}`,
+    "",
+    "Cliente",
+    `Nombre: ${order.customer_name || "Sin informar"}`,
+    `WhatsApp: ${order.customer_phone || "Sin informar"}`,
+    order.customer_email ? `Email: ${order.customer_email}` : null,
+    "",
+    "Envío",
+    `Dirección: ${shippingDetails.address || "Sin informar"}`,
+    `Localidad: ${shippingDetails.city || "Sin informar"}`,
+    `Código postal: ${shippingDetails.postalCode || "Sin informar"}`,
+    "",
+    "Productos",
+    itemLines,
+    "",
+    `Total: ${formatCartPrice(Number(order.total))}`,
+  ].filter(Boolean).join("\n")
+}
+
 function orderStockReserved(order: OrderRead) {
   return Boolean(order.metadata?.stock_reserved)
 }
@@ -213,6 +248,8 @@ function normalizeSearchText(value: string) {
 }
 
 function orderSearchText(order: OrderRead) {
+  const shippingDetails = orderShippingDetails(order)
+
   return normalizeSearchText(
     [
       order.id,
@@ -222,6 +259,9 @@ function orderSearchText(order: OrderRead) {
       order.customer_phone,
       paymentMethodLabels[order.payment_method],
       fulfillmentLabels[order.fulfillment_method],
+      shippingDetails.address,
+      shippingDetails.city,
+      shippingDetails.postalCode,
       statusLabel(order.status),
       paymentStatusLabel(order.payment_status),
       order.items
@@ -246,6 +286,8 @@ export function OrderAdminPanel() {
   const [paymentFilter, setPaymentFilter] = useState<(typeof paymentFilterOptions)[number]["value"]>("all")
   const [paymentMethodFilter, setPaymentMethodFilter] =
     useState<(typeof paymentMethodFilterOptions)[number]["value"]>("all")
+  const [fulfillmentFilter, setFulfillmentFilter] =
+    useState<(typeof fulfillmentFilterOptions)[number]["value"]>("all")
   const [visibleCount, setVisibleCount] = useState(adminOrderPageSize)
   const [error, setError] = useState<string | null>(null)
 
@@ -254,11 +296,13 @@ export function OrderAdminPanel() {
     const pendingCount = orders.filter((order) => order.status === "pending").length
     const unpaidCount = openOrders.filter((order) => order.payment_status !== "paid").length
     const readyCount = orders.filter((order) => order.status === "ready").length
+    const shippingCount = openOrders.filter((order) => order.fulfillment_method === "shipping").length
 
     return {
       open: openOrders.length,
       pending: pendingCount,
       ready: readyCount,
+      shipping: shippingCount,
       unpaid: unpaidCount,
     }
   }, [orders])
@@ -285,11 +329,13 @@ export function OrderAdminPanel() {
           : order.status === statusFilter)
       const matchesPayment = paymentFilter === "all" || order.payment_status === paymentFilter
       const matchesMethod = paymentMethodFilter === "all" || order.payment_method === paymentMethodFilter
+      const matchesFulfillment =
+        fulfillmentFilter === "all" || order.fulfillment_method === fulfillmentFilter
       const matchesSearch = !normalizedSearchTerm || orderSearchText(order).includes(normalizedSearchTerm)
 
-      return matchesStatus && matchesPayment && matchesMethod && matchesSearch
+      return matchesStatus && matchesPayment && matchesMethod && matchesFulfillment && matchesSearch
     })
-  }, [paymentFilter, paymentMethodFilter, searchTerm, sortedOrders, statusFilter])
+  }, [fulfillmentFilter, paymentFilter, paymentMethodFilter, searchTerm, sortedOrders, statusFilter])
   const visibleOrders = useMemo(
     () => filteredOrders.slice(0, visibleCount),
     [filteredOrders, visibleCount],
@@ -300,7 +346,8 @@ export function OrderAdminPanel() {
     searchTerm.trim() !== "" ||
     statusFilter !== "active" ||
     paymentFilter !== "all" ||
-    paymentMethodFilter !== "all"
+    paymentMethodFilter !== "all" ||
+    fulfillmentFilter !== "all"
 
   function resetFilters() {
     setVisibleCount(adminOrderPageSize)
@@ -308,6 +355,7 @@ export function OrderAdminPanel() {
     setStatusFilter("active")
     setPaymentFilter("all")
     setPaymentMethodFilter("all")
+    setFulfillmentFilter("all")
   }
 
   async function loadOrders(refresh = false) {
@@ -393,6 +441,18 @@ export function OrderAdminPanel() {
     await changeStatus(orderToCancel, "cancelled")
   }
 
+  async function copyShippingDetails(order: OrderRead) {
+    try {
+      await navigator.clipboard.writeText(buildShippingClipboardText(order))
+      void showSuccess("Datos de envío copiados", `Pedido #${orderCode(order.id)} listo para despacho.`)
+    } catch {
+      void showError(
+        "No pudimos copiar los datos",
+        "Copialos manualmente desde la tarjeta del pedido.",
+      )
+    }
+  }
+
   if (isLoading) {
     return (
       <section className="rounded-3xl border bg-card p-6">
@@ -413,6 +473,9 @@ export function OrderAdminPanel() {
             <Badge variant={metrics.pending > 0 ? "default" : "secondary"}>
               {metrics.pending} por confirmar
             </Badge>
+            <Badge variant={metrics.shipping > 0 ? "default" : "secondary"}>
+              {metrics.shipping} con envío
+            </Badge>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
             Atendé primero los pedidos por cobrar y por confirmar. No prepares ni entregues pedidos
@@ -430,7 +493,7 @@ export function OrderAdminPanel() {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <article className="rounded-2xl border bg-background/50 p-4">
           <p className="text-3xl font-black">{metrics.open}</p>
           <p className="text-sm font-semibold">Activas</p>
@@ -451,6 +514,11 @@ export function OrderAdminPanel() {
           <p className="text-sm font-semibold">Listas</p>
           <p className="mt-1 text-xs text-muted-foreground">Esperan retiro o envío.</p>
         </article>
+        <article className="rounded-2xl border bg-background/50 p-4">
+          <p className="text-3xl font-black">{metrics.shipping}</p>
+          <p className="text-sm font-semibold">Con envío</p>
+          <p className="mt-1 text-xs text-muted-foreground">Para preparar despacho.</p>
+        </article>
       </div>
 
       <div className="space-y-3 rounded-3xl border bg-background/50 p-4">
@@ -464,7 +532,7 @@ export function OrderAdminPanel() {
           </Badge>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[minmax(16rem,1.5fr)_repeat(3,minmax(10rem,1fr))_auto]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(16rem,1.5fr)_repeat(4,minmax(10rem,1fr))_auto]">
           <label className="space-y-1">
             <span className="text-xs font-medium text-muted-foreground">
               Pedido, cliente, contacto, producto o talle
@@ -532,6 +600,26 @@ export function OrderAdminPanel() {
               }}
             >
               {paymentMethodFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Entrega</span>
+            <select
+              className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
+              value={fulfillmentFilter}
+              onChange={(event) => {
+                setVisibleCount(adminOrderPageSize)
+                setFulfillmentFilter(
+                  event.target.value as (typeof fulfillmentFilterOptions)[number]["value"],
+                )
+              }}
+            >
+              {fulfillmentFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -791,6 +879,18 @@ export function OrderAdminPanel() {
                         >
                           <PackageCheckIcon data-icon="inline-start" />
                           {nextAction.label}
+                        </Button>
+                      ) : null}
+
+                      {order.fulfillment_method === "shipping" ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={!shippingDetails.address}
+                          onClick={() => void copyShippingDetails(order)}
+                        >
+                          <ClipboardIcon data-icon="inline-start" />
+                          Copiar datos de envío
                         </Button>
                       ) : null}
 
