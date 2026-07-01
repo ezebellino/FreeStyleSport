@@ -10,6 +10,9 @@ export type OrderCreatePayload = {
   customer_phone?: string
   payment_method: "to_confirm" | "cash" | "transfer" | "mercado_pago" | "card" | "wallet"
   fulfillment_method: "pickup" | "shipping" | "local_payment"
+  shipping_address?: string
+  shipping_city?: string
+  shipping_postal_code?: string
   payment_reference?: string
   payment_proof_url?: string
   notes?: string
@@ -106,6 +109,18 @@ export function orderPaymentReference(order: OrderRead) {
 export function orderPaymentProofUrl(order: OrderRead) {
   const proofUrl = order.metadata?.payment_proof_url
   return typeof proofUrl === "string" && proofUrl.trim() ? proofUrl.trim() : null
+}
+
+export function orderShippingDetails(order: OrderRead) {
+  const address = order.metadata?.shipping_address
+  const city = order.metadata?.shipping_city
+  const postalCode = order.metadata?.shipping_postal_code
+
+  return {
+    address: typeof address === "string" && address.trim() ? address.trim() : null,
+    city: typeof city === "string" && city.trim() ? city.trim() : null,
+    postalCode: typeof postalCode === "string" && postalCode.trim() ? postalCode.trim() : null,
+  }
 }
 
 export function hasPaymentSubmission(order: OrderRead) {

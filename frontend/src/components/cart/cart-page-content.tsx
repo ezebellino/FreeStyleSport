@@ -35,6 +35,7 @@ import {
   orderGiftCouponCode,
   orderPaymentProofUrl,
   orderPaymentReference,
+  orderShippingDetails,
   type OrderCreatePayload,
   type OrderRead,
 } from "@/lib/orders"
@@ -171,6 +172,7 @@ function buildOrderConfirmationMessage(order: OrderRead) {
   const giftCouponCode = orderGiftCouponCode(order)
   const paymentReference = orderPaymentReference(order)
   const paymentProofUrl = orderPaymentProofUrl(order)
+  const shippingDetails = orderShippingDetails(order)
   const itemLines = order.items
     .map((item) => {
       const variantDescription = orderItemVariantDescription(item)
@@ -186,6 +188,10 @@ function buildOrderConfirmationMessage(order: OrderRead) {
     `Total: ${formatCartPrice(Number(order.total))}`,
     hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
     giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
+    shippingDetails.address ? `Envío: ${shippingDetails.address}` : null,
+    shippingDetails.city || shippingDetails.postalCode
+      ? `Localidad/CP: ${[shippingDetails.city, shippingDetails.postalCode].filter(Boolean).join(" - ")}`
+      : null,
     paymentReference ? `Referencia de pago: ${paymentReference}.` : null,
     paymentProofUrl ? `Comprobante: ${paymentProofUrl}` : null,
     "Quedo atento/a para confirmar pago y disponibilidad.",
@@ -202,6 +208,9 @@ export function CartPageContent() {
     useState<OrderCreatePayload["payment_method"]>("to_confirm")
   const [fulfillmentMethod, setFulfillmentMethod] =
     useState<OrderCreatePayload["fulfillment_method"]>("pickup")
+  const [shippingAddress, setShippingAddress] = useState("")
+  const [shippingCity, setShippingCity] = useState("")
+  const [shippingPostalCode, setShippingPostalCode] = useState("")
   const [paymentReference, setPaymentReference] = useState("")
   const [paymentProofUrl, setPaymentProofUrl] = useState("")
   const [notes, setNotes] = useState("")
@@ -222,7 +231,16 @@ export function CartPageContent() {
   const itemCount = items.reduce((count, item) => count + item.quantity, 0)
   const selectedPayment = paymentOptions.find((option) => option.value === paymentMethod)
   const selectedFulfillment = fulfillmentOptions.find((option) => option.value === fulfillmentMethod)
-  const canSubmit = itemCount > 0 && customerName.trim().length > 1 && customerPhone.trim().length > 5
+  const isShippingSelected = fulfillmentMethod === "shipping"
+  const hasShippingDetails =
+    shippingAddress.trim().length > 4 &&
+    shippingCity.trim().length > 1 &&
+    shippingPostalCode.trim().length > 2
+  const canSubmit =
+    itemCount > 0 &&
+    customerName.trim().length > 1 &&
+    customerPhone.trim().length > 5 &&
+    (!isShippingSelected || hasShippingDetails)
   const shouldShowPaymentProfile =
     Boolean(paymentProfile?.is_active) &&
     ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
@@ -311,7 +329,11 @@ export function CartPageContent() {
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!canSubmit) {
-      setError("Necesitamos tu nombre y un WhatsApp válido para coordinar la reserva.")
+      setError(
+        isShippingSelected && !hasShippingDetails
+          ? "Para enviar el pedido necesitamos dirección, localidad y código postal."
+          : "Necesitamos tu nombre y un WhatsApp válido para coordinar la reserva.",
+      )
       return
     }
 
@@ -326,6 +348,9 @@ export function CartPageContent() {
         customer_email: customerEmail.trim() || undefined,
         payment_method: paymentMethod,
         fulfillment_method: fulfillmentMethod,
+        shipping_address: isShippingSelected ? shippingAddress.trim() : undefined,
+        shipping_city: isShippingSelected ? shippingCity.trim() : undefined,
+        shipping_postal_code: isShippingSelected ? shippingPostalCode.trim() : undefined,
         payment_reference: paymentReference.trim() || undefined,
         payment_proof_url: paymentProofUrl.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -863,6 +888,61 @@ export function CartPageContent() {
                 </label>
               ))}
             </div>
+            {isShippingSelected ? (
+              <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4">
+                <div className="mb-3 flex items-start gap-2">
+                  <MapPinIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-black text-primary">Datos para el envío</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Estos datos le quedan al vendedor para cotizar o despachar por correo.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-3">
+                  <label className="space-y-2" htmlFor="shipping-address">
+                    <span className="text-sm font-semibold">Dirección</span>
+                    <input
+                      id="shipping-address"
+                      className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                      value={shippingAddress}
+                      onChange={(event) => setShippingAddress(event.target.value)}
+                      placeholder="Calle, número, piso/depto"
+                      required={isShippingSelected}
+                    />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
+                    <label className="space-y-2" htmlFor="shipping-city">
+                      <span className="text-sm font-semibold">Localidad</span>
+                      <input
+                        id="shipping-city"
+                        className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        value={shippingCity}
+                        onChange={(event) => setShippingCity(event.target.value)}
+                        placeholder="Ej: Dolores"
+                        required={isShippingSelected}
+                      />
+                    </label>
+                    <label className="space-y-2" htmlFor="shipping-postal-code">
+                      <span className="text-sm font-semibold">Código postal</span>
+                      <input
+                        id="shipping-postal-code"
+                        className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        value={shippingPostalCode}
+                        onChange={(event) => setShippingPostalCode(event.target.value)}
+                        placeholder="7100"
+                        required={isShippingSelected}
+                      />
+                    </label>
+                  </div>
+                </div>
+                {!hasShippingDetails ? (
+                  <p className="mt-3 text-xs font-semibold text-primary">
+                    Completá dirección, localidad y código postal para crear la reserva con envío.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <label className="block space-y-2" htmlFor="order-notes">
@@ -872,7 +952,7 @@ export function CartPageContent() {
               className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Horario de retiro, dirección aproximada o cualquier aclaración."
+              placeholder="Horario de retiro, referencia de la dirección o cualquier aclaración."
             />
           </label>
 

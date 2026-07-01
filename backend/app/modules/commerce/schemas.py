@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 ProductStatus = Literal["draft", "published", "paused", "archived"]
 OrderStatus = Literal["pending", "confirmed", "preparing", "ready", "delivered", "cancelled"]
@@ -181,10 +181,28 @@ class OrderCreate(BaseModel):
     customer_phone: str | None = Field(default=None, max_length=80)
     payment_method: PaymentMethod = "to_confirm"
     fulfillment_method: FulfillmentMethod = "pickup"
+    shipping_address: str | None = Field(default=None, max_length=240)
+    shipping_city: str | None = Field(default=None, max_length=120)
+    shipping_postal_code: str | None = Field(default=None, max_length=40)
     payment_reference: str | None = Field(default=None, max_length=240)
     payment_proof_url: str | None = Field(default=None, max_length=1000)
     notes: str | None = Field(default=None, max_length=1000)
     items: list[OrderItemCreate] = Field(min_length=1, max_length=80)
+
+    @model_validator(mode="after")
+    def require_shipping_details_for_shipping(self) -> "OrderCreate":
+        if self.fulfillment_method != "shipping":
+            return self
+        required_values = [
+            self.shipping_address,
+            self.shipping_city,
+            self.shipping_postal_code,
+        ]
+        if not all(isinstance(value, str) and value.strip() for value in required_values):
+            raise ValueError(
+                "Para enviar el pedido necesitamos dirección, localidad y código postal."
+            )
+        return self
 
 
 class OrderItemRead(BaseModel):

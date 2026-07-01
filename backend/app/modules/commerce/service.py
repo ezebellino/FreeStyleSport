@@ -5,10 +5,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from urllib.parse import parse_qsl
 
 import httpx
-from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.modules.commerce.models import (
@@ -31,6 +27,9 @@ from app.modules.commerce.schemas import (
     ProductUpdate,
     PromotionSettingsUpdate,
 )
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 DEFAULT_TENANT_SLUG = "freestyle"
 WELCOME_COUPON_CODE = "BIENVENIDA10"
@@ -1036,6 +1035,18 @@ async def create_order(
     total = _money(subtotal - welcome_discount)
     order_metadata: dict[str, object] = {"source": "storefront_cart"}
     order_metadata.update(order_commercial_benefits(total, promotion_settings))
+    shipping_details = {
+        "shipping_address": payload.shipping_address,
+        "shipping_city": payload.shipping_city,
+        "shipping_postal_code": payload.shipping_postal_code,
+    }
+    order_metadata.update(
+        {
+            key: value.strip()
+            for key, value in shipping_details.items()
+            if isinstance(value, str) and value.strip()
+        }
+    )
     payment_submission = order_payment_submission_metadata(
         payment_reference=payload.payment_reference,
         payment_proof_url=payload.payment_proof_url,

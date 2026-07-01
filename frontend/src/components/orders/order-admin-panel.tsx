@@ -32,6 +32,7 @@ import {
   orderItemVariantDescription,
   orderPaymentProofUrl,
   orderPaymentReference,
+  orderShippingDetails,
   type OrderRead,
   updateAdminOrderPaymentStatus,
   updateAdminOrderStatus,
@@ -124,6 +125,7 @@ function buildWhatsAppHref(order: OrderRead) {
   const giftCouponCode = orderGiftCouponCode(order)
   const paymentReference = orderPaymentReference(order)
   const paymentProofUrl = orderPaymentProofUrl(order)
+  const shippingDetails = orderShippingDetails(order)
   const itemLines = order.items
     .map((item) => {
       const variant = orderItemVariantDescription(item)
@@ -138,6 +140,10 @@ function buildWhatsAppHref(order: OrderRead) {
     `Total: ${formatCartPrice(Number(order.total))}`,
     hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
     giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
+    shippingDetails.address ? `Envío: ${shippingDetails.address}` : null,
+    shippingDetails.city || shippingDetails.postalCode
+      ? `Localidad/CP: ${[shippingDetails.city, shippingDetails.postalCode].filter(Boolean).join(" - ")}`
+      : null,
     paymentReference ? `Referencia de pago: ${paymentReference}.` : null,
     paymentProofUrl ? `Comprobante: ${paymentProofUrl}` : null,
     `Estado: ${statusLabel(order.status)} / ${paymentStatusLabel(order.payment_status)}`,
@@ -573,6 +579,7 @@ export function OrderAdminPanel() {
             const paymentReference = orderPaymentReference(order)
             const paymentProofUrl = orderPaymentProofUrl(order)
             const hasSubmittedPayment = hasPaymentSubmission(order)
+            const shippingDetails = orderShippingDetails(order)
 
             return (
               <article key={order.id} className="overflow-hidden rounded-[2rem] border bg-background/35">
@@ -635,7 +642,18 @@ export function OrderAdminPanel() {
                         <p className="mt-2 text-sm font-bold">
                           {fulfillmentLabels[order.fulfillment_method] ?? order.fulfillment_method}
                         </p>
-                        <p className="text-xs text-muted-foreground">Buenos Aires 68, Dolores</p>
+                        {order.fulfillment_method === "shipping" && shippingDetails.address ? (
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                            <p>{shippingDetails.address}</p>
+                            <p>
+                              {[shippingDetails.city, shippingDetails.postalCode]
+                                .filter(Boolean)
+                                .join(" - ")}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Buenos Aires 68, Dolores</p>
+                        )}
                       </div>
                     </div>
 
