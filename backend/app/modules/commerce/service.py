@@ -257,6 +257,12 @@ def _variant_attribute_text(variant: ProductVariant | None, keys: tuple[str, ...
     return None
 
 
+def _order_item_image_url(product: Product, selected_variant: ProductVariant | None) -> str | None:
+    if selected_variant and selected_variant.image_url:
+        return selected_variant.image_url
+    return product.images[0].url if product.images else None
+
+
 def _order_stock_reserved(order: Order) -> bool:
     return bool(order.order_metadata.get("stock_reserved"))
 
@@ -759,6 +765,7 @@ async def create_product(session: AsyncSession, payload: ProductCreate) -> Produ
             label=variant.label,
             price=variant.price,
             stock_quantity=variant.stock_quantity,
+            image_url=variant.image_url,
             attributes=variant.attributes,
             sort_order=variant.sort_order,
         )
@@ -819,6 +826,7 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
                 label=variant.label,
                 price=variant.price,
                 stock_quantity=variant.stock_quantity,
+                image_url=variant.image_url,
                 attributes=variant.attributes,
                 sort_order=variant.sort_order,
             )
@@ -922,7 +930,7 @@ async def create_order(
                 product_id=product.id,
                 product_slug=product.slug,
                 product_name=product.name,
-                image_url=product.images[0].url if product.images else None,
+                image_url=_order_item_image_url(product, selected_variant),
                 unit_price=unit_price,
                 quantity=quantity,
                 line_total=line_total,

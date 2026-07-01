@@ -215,6 +215,7 @@ class ProductVariant(Base):
     label: Mapped[str] = mapped_column(String(160))
     price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     attributes: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

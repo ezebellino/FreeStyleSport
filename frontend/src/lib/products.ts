@@ -13,6 +13,7 @@ export type ProductVariant = {
   label: string
   price?: string | number | null
   stock_quantity: number
+  image_url?: string | null
   attributes: Record<string, unknown>
 }
 
@@ -49,6 +50,7 @@ export type ProductPayload = {
     label: string
     price?: number
     stock_quantity: number
+    image_url?: string
     attributes: Record<string, unknown>
     sort_order?: number
   }>

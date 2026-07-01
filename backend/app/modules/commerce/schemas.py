@@ -95,6 +95,7 @@ class ProductVariantInput(BaseModel):
     label: str = Field(min_length=1, max_length=160)
     price: Decimal | None = Field(default=None, ge=0)
     stock_quantity: int = Field(default=0, ge=0)
+    image_url: str | None = Field(default=None, max_length=1000)
     attributes: dict[str, object] = Field(default_factory=dict)
     sort_order: int = 0
 
@@ -107,6 +108,7 @@ class ProductVariantRead(BaseModel):
     label: str
     price: Decimal | None = None
     stock_quantity: int
+    image_url: str | None = None
     attributes: dict[str, object]
     sort_order: int
 
