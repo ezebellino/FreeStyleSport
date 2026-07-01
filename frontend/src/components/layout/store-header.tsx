@@ -249,17 +249,19 @@ export function StoreHeader() {
                             Mi perfil
                           </Link>
                         </Button>
-                        <Button
-                          asChild
-                          variant="ghost"
-                          className="justify-start"
-                          onClick={() => setIsAccountOpen(false)}
-                        >
-                          <Link href="/perfil#pedidos" role="menuitem">
-                            <ClipboardListIcon data-icon="inline-start" />
-                            Historial de compras
-                          </Link>
-                        </Button>
+                        {!isStaff ? (
+                          <Button
+                            asChild
+                            variant="ghost"
+                            className="justify-start"
+                            onClick={() => setIsAccountOpen(false)}
+                          >
+                            <Link href="/perfil#pedidos" role="menuitem">
+                              <ClipboardListIcon data-icon="inline-start" />
+                              Historial de compras
+                            </Link>
+                          </Button>
+                        ) : null}
                         {isStaff ? (
                           <>
                             <Button

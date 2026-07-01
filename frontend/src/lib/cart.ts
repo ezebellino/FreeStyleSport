@@ -78,7 +78,7 @@ export function productToCartItem(product: Product, variantId?: string): CartIte
     variantSize,
     price: Number(variant?.price ?? product.base_price),
     currency: product.currency,
-    imageUrl: product.images[0]?.url,
+    imageUrl: variant?.image_url ?? product.images[0]?.url,
     quantity: 1,
   }
 }

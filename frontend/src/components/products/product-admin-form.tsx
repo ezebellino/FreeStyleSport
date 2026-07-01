@@ -48,6 +48,7 @@ type VariantDraft = {
   sku: string
   price: string
   color: string
+  imageUrl: string
 }
 
 type VariantDraftGroup = {
@@ -75,6 +76,7 @@ function variantToDraft(variant: ProductVariant): VariantDraft {
     sku: variant.sku ?? "",
     price: variant.price ? String(variant.price) : "",
     color: variantAttribute(variant, ["color", "colour", "color_nombre"]) ?? "",
+    imageUrl: variant.image_url ?? "",
   }
 }
 
@@ -85,6 +87,7 @@ function emptyVariantDraft(): VariantDraft {
     sku: "",
     price: "",
     color: "",
+    imageUrl: "",
   }
 }
 
@@ -261,6 +264,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         stock,
         price: bulkPrice,
         sku: skuBase ? `${skuBase}-${skuPart(color)}-${skuPart(size)}` : "",
+        imageUrl: "",
       })),
     )
 
@@ -355,6 +359,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         label: displayVariantLabel(variant, `Variante ${index + 1}`),
         price: variant.price ? Number(variant.price) : undefined,
         stock_quantity: Math.max(0, Number(variant.stock) || 0),
+        image_url: variant.imageUrl.trim() || undefined,
         attributes: {
           talle: variant.label.trim() || `Variante ${index + 1}`,
           ...(variant.color.trim() ? { color: variant.color.trim() } : {}),
@@ -446,6 +451,23 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
       setMessage("Imagen subida. Revisá la vista previa y guardá el producto.")
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No pudimos subir la imagen")
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  async function uploadVariantImage(index: number, file: File | undefined) {
+    if (!file) return
+    setMessage(null)
+    setError(null)
+    setIsUploadingImage(true)
+
+    try {
+      const uploadedImage = await uploadAdminProductImage(file)
+      updateVariant(index, { imageUrl: uploadedImage.url })
+      setMessage("Imagen de variante subida. Guarda el producto para aplicar el cambio.")
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No pudimos subir la imagen de la variante")
     } finally {
       setIsUploadingImage(false)
     }
@@ -786,8 +808,18 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
                   {group.variants.map(({ index, variant }) => (
                     <div
                       key={`${group.key}-${index}`}
-                      className="grid gap-3 rounded-2xl border bg-background/60 p-3 md:grid-cols-[1fr_0.7fr_1fr_1fr_auto]"
+                      className="grid gap-3 rounded-2xl border bg-background/60 p-3 md:grid-cols-[5rem_1fr_0.7fr_1fr_1fr_auto]"
                     >
+                      <div className="space-y-1">
+                        <span className="text-xs font-medium text-muted-foreground">Foto</span>
+                        <div className="aspect-square overflow-hidden rounded-xl border bg-white">
+                          <ProductImage
+                            alt={`Imagen de ${displayVariantLabel(variant, `Variante ${index + 1}`)}`}
+                            className="size-full object-contain p-1"
+                            src={variant.imageUrl || validImageUrls[0]}
+                          />
+                        </div>
+                      </div>
                       <label className="space-y-1">
                         <span className="text-xs font-medium text-muted-foreground">Talle / número</span>
                         <input
@@ -836,6 +868,29 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
                       >
                         Quitar
                       </Button>
+                      <label className="space-y-1 md:col-start-2 md:col-span-4">
+                        <span className="text-xs font-medium text-muted-foreground">Imagen propia de esta variante</span>
+                        <input
+                          className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:border-primary"
+                          onChange={(event) => updateVariant(index, { imageUrl: event.target.value })}
+                          placeholder="opcional: https://res.cloudinary.com/..."
+                          type="url"
+                          value={variant.imageUrl}
+                        />
+                        <FieldHint>
+                          Si queda vacio, se usa la imagen principal. Ideal para diferenciar colores.
+                        </FieldHint>
+                      </label>
+                      <label className="inline-flex cursor-pointer items-center justify-center self-start rounded-lg border border-transparent bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] md:self-center">
+                        {isUploadingImage ? "Subiendo..." : "Subir"}
+                        <input
+                          accept="image/png,image/jpeg,image/webp"
+                          className="sr-only"
+                          disabled={isUploadingImage}
+                          onChange={(event) => void uploadVariantImage(index, event.target.files?.[0])}
+                          type="file"
+                        />
+                      </label>
                     </div>
                   ))}
                 </div>

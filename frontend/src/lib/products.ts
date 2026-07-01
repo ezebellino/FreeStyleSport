@@ -13,6 +13,7 @@ export type ProductVariant = {
   label: string
   price?: string | number | null
   stock_quantity: number
+  image_url?: string | null
   attributes: Record<string, unknown>
 }
 
@@ -32,6 +33,13 @@ export type Product = {
   variants: ProductVariant[]
 }
 
+export const productVariantImageSelectedEvent = "freestyle:product-variant-image-selected"
+
+export type ProductVariantImageSelectedDetail = {
+  productSlug: string
+  imageUrl?: string | null
+}
+
 export type ProductPayload = {
   name: string
   slug: string
@@ -49,6 +57,7 @@ export type ProductPayload = {
     label: string
     price?: number
     stock_quantity: number
+    image_url?: string
     attributes: Record<string, unknown>
     sort_order?: number
   }>

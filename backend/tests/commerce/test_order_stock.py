@@ -9,6 +9,7 @@ from app.core.errors import ApiError
 from app.modules.commerce.service import (
     GIFT_BONUS_CODE,
     WELCOME_COUPON_CODE,
+    _order_item_image_url,
     _release_variant_quantities,
     _reserve_variant_quantities,
     calculate_welcome_discount,
@@ -17,6 +18,20 @@ from app.modules.commerce.service import (
     order_payment_submission_metadata,
     validate_mercado_pago_webhook_signature,
 )
+
+
+def test_order_item_image_url_prefers_variant_image() -> None:
+    product = SimpleNamespace(images=[SimpleNamespace(url="https://example.com/product.webp")])
+    variant = SimpleNamespace(image_url="https://example.com/variant-green.webp")
+
+    assert _order_item_image_url(product, variant) == "https://example.com/variant-green.webp"
+
+
+def test_order_item_image_url_falls_back_to_product_image() -> None:
+    product = SimpleNamespace(images=[SimpleNamespace(url="https://example.com/product.webp")])
+    variant = SimpleNamespace(image_url=None)
+
+    assert _order_item_image_url(product, variant) == "https://example.com/product.webp"
 
 
 def test_reserve_order_stock_decrements_variant_stock() -> None:

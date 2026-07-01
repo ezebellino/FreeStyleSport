@@ -1,11 +1,16 @@
 "use client"
 
 import { ShoppingBagIcon } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useCart } from "@/components/cart/cart-provider"
 import { Button } from "@/components/ui/button"
-import type { Product, ProductVariant } from "@/lib/products"
+import {
+  productVariantImageSelectedEvent,
+  type Product,
+  type ProductVariant,
+  type ProductVariantImageSelectedDetail,
+} from "@/lib/products"
 
 function variantKey(productVariant: ProductVariant) {
   return productVariant.id ?? productVariant.label
@@ -90,6 +95,17 @@ export function AddToCartButton({
   const canAdd =
     !needsVariant || Boolean(effectiveSelectedVariant && effectiveSelectedVariant.stock_quantity > 0)
   const selectedStock = effectiveSelectedVariant?.stock_quantity ?? 0
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent<ProductVariantImageSelectedDetail>(productVariantImageSelectedEvent, {
+        detail: {
+          productSlug: product.slug,
+          imageUrl: effectiveSelectedVariant?.image_url ?? null,
+        },
+      }),
+    )
+  }, [effectiveSelectedVariant?.image_url, product.slug])
 
   function selectColor(color: string) {
     setSelectedColor(color)
