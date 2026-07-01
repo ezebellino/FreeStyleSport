@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -14,6 +16,15 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=12)
+    first_name: str | None = Field(default=None, max_length=80)
+    last_name: str | None = Field(default=None, max_length=80)
+    phone: str | None = Field(default=None, max_length=40)
+
+
+class StaffUserCreateRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=12)
+    role: Literal["admin"] = "admin"
     first_name: str | None = Field(default=None, max_length=80)
     last_name: str | None = Field(default=None, max_length=80)
     phone: str | None = Field(default=None, max_length=40)

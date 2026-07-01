@@ -22,6 +22,7 @@ from app.modules.identity.schemas import (
     PublicUser,
     RegisterRequest,
     ResendConfirmationRequest,
+    StaffUserCreateRequest,
 )
 from app.modules.identity.sessions import IssuedSessionTokens, SessionTokens
 
@@ -64,6 +65,13 @@ class IdentityService(Protocol):
         settings: Settings,
         email_sender: EmailSender,
     ) -> None: ...
+
+    async def create_staff_user(
+        self,
+        payload: StaffUserCreateRequest,
+        request: Request,
+        actor_user_id: str,
+    ) -> PublicUser: ...
 
 
 def _public_user(user: User) -> PublicUser:
@@ -302,6 +310,39 @@ class SqlAlchemyIdentityService:
                 raise
             return False
         return True
+
+    async def create_staff_user(
+        self,
+        payload: StaffUserCreateRequest,
+        request: Request,
+        actor_user_id: str,
+    ) -> PublicUser:
+        email = payload.email.lower()
+        existing_user = await self._session.scalar(select(User).where(User.email == email))
+        if existing_user is not None:
+            raise ApiError(409, "email_already_registered", "Ya existe una cuenta con ese email")
+
+        user = User(
+            email=email,
+            password_hash=PasswordHasher().hash(payload.password),
+            role=payload.role,
+            first_name=payload.first_name.strip() if payload.first_name else None,
+            last_name=payload.last_name.strip() if payload.last_name else None,
+            phone=payload.phone.strip() if payload.phone else None,
+            is_active=True,
+            email_confirmed_at=datetime.now(UTC),
+        )
+        self._session.add(user)
+        await self._session.flush()
+        await record_audit_event(
+            self._session,
+            request,
+            "identity.staff_user_created",
+            actor_user_id,
+        )
+        await self._session.commit()
+        await self._session.refresh(user)
+        return _public_user(user)
 
     async def confirm_email(self, payload: ConfirmEmailRequest, request: Request) -> None:
         confirmation = await self._session.scalar(

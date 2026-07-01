@@ -15,6 +15,7 @@ from app.modules.identity.schemas import (
     PublicUser,
     RegisterRequest,
     ResendConfirmationRequest,
+    StaffUserCreateRequest,
 )
 from app.modules.identity.service import IdentityService, get_identity_service
 from app.modules.identity.sessions import require_matching_csrf
@@ -32,6 +33,20 @@ def get_email_sender(settings: SettingsDependency) -> EmailSender:
 
 
 EmailSenderDependency = Annotated[EmailSender, Depends(get_email_sender)]
+
+
+async def require_superadmin(
+    request: Request,
+    identity_service: IdentityServiceDependency,
+    settings: SettingsDependency,
+) -> PublicUser:
+    user = await identity_service.current_user(request.cookies.get(settings.session_cookie_name))
+    if user.role != "superadmin":
+        raise ApiError(403, "forbidden", "Solo el superadmin puede crear administradores")
+    return user
+
+
+SuperadminDependency = Annotated[PublicUser, Depends(require_superadmin)]
 
 
 def _set_auth_cookies(
@@ -64,6 +79,16 @@ async def bootstrap_admin(
     identity_service: IdentityServiceDependency,
 ) -> PublicUser:
     return await identity_service.bootstrap_admin(payload, request)
+
+
+@router.post("/admin/users", response_model=PublicUser, status_code=201)
+async def create_staff_user(
+    payload: StaffUserCreateRequest,
+    request: Request,
+    identity_service: IdentityServiceDependency,
+    superadmin: SuperadminDependency,
+) -> PublicUser:
+    return await identity_service.create_staff_user(payload, request, superadmin.id)
 
 
 @router.post("/login", response_model=PublicUser)
