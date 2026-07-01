@@ -16,6 +16,7 @@ from app.modules.identity.schemas import (
     PublicUser,
     RegisterRequest,
     ResendConfirmationRequest,
+    StaffUserCreateRequest,
 )
 from app.modules.identity.sessions import IssuedSessionTokens, SessionTokens
 
@@ -129,6 +130,29 @@ class FakeIdentityService:
             raise ApiError(401, "not_authenticated", "Authentication is required")
         self.sessions[raw_session_token].revoked = True
 
+    async def create_staff_user(
+        self,
+        payload: StaffUserCreateRequest,
+        request: Request,
+        actor_user_id: str,
+    ) -> PublicUser:
+        from app.core.errors import ApiError
+
+        if payload.email.lower() in self.users:
+            raise ApiError(409, "email_already_registered", "Ya existe una cuenta con ese email")
+
+        user = PublicUser(
+            id=str(uuid4()),
+            email=payload.email,
+            role=payload.role,
+            email_confirmed=True,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            phone=payload.phone,
+        )
+        self.users[payload.email.lower()] = (user, payload.password)
+        return user
+
 
 def build_client() -> TestClient:
     service = FakeIdentityService()
@@ -185,6 +209,33 @@ def test_login_sets_session_and_csrf_cookies() -> None:
     assert client.cookies.get("fs_csrf") is not None
     assert "HttpOnly" in response.headers["set-cookie"]
     assert "Max-Age=3600" in response.headers["set-cookie"]
+
+
+def test_superadmin_can_create_admin_user() -> None:
+    client = build_client()
+    client.post(
+        "/identity/bootstrap-admin",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+    client.post(
+        "/identity/login",
+        json={"email": "owner@example.com", "password": "correct horse battery"},
+    )
+
+    response = client.post(
+        "/identity/admin/users",
+        json={
+            "email": "seller@example.com",
+            "password": "correct horse battery",
+            "role": "admin",
+            "first_name": "Seller",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["email"] == "seller@example.com"
+    assert response.json()["role"] == "admin"
+    assert response.json()["email_confirmed"] is True
 
 
 def test_me_returns_current_user_after_login() -> None:

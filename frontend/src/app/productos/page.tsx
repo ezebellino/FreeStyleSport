@@ -1,8 +1,6 @@
-import Link from "next/link"
-
+import { AdminActionLink } from "@/components/auth/admin-access-gate"
 import { ProductCatalog } from "@/components/products/product-catalog"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { demoProducts, fetchProducts } from "@/lib/products"
 
 export default async function ProductsPage({
@@ -39,9 +37,7 @@ export default async function ProductsPage({
             para ropa deportiva, ninos, bebes u otros rubros.
           </p>
         </div>
-        <Button asChild variant="secondary">
-          <Link href="/admin">Cargar producto</Link>
-        </Button>
+        <AdminActionLink href="/admin">Cargar producto</AdminActionLink>
       </div>
 
       {isDemo ? (
