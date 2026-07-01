@@ -24,11 +24,12 @@ export default function RegisterPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const formElement = event.currentTarget
     setError(null)
     setMessage(null)
     setIsSubmitting(true)
 
-    const form = new FormData(event.currentTarget)
+    const form = new FormData(formElement)
     const firstName = String(form.get("firstName") ?? "").trim()
     const lastName = String(form.get("lastName") ?? "").trim()
     const phone = String(form.get("phone") ?? "").trim()
@@ -61,9 +62,10 @@ export default function RegisterPage() {
         lastName,
         phone,
       })
+      setError(null)
       setMessage(response.message)
       void showSuccess("Cuenta creada", response.message)
-      event.currentTarget.reset()
+      formElement.reset()
       setPassword("")
     } catch (caught) {
       if (caught instanceof AuthApiError) {
