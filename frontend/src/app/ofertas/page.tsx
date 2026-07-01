@@ -4,20 +4,15 @@ import Link from "next/link"
 import { ProductCatalog } from "@/components/products/product-catalog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { demoProducts, fetchProducts } from "@/lib/products"
+import { fetchProducts, type Product } from "@/lib/products"
 
 export default async function OffersPage() {
-  let products = demoProducts
-  let isDemo = true
+  let products: Product[] = []
 
   try {
-    const apiProducts = await fetchProducts()
-    if (apiProducts.length > 0) {
-      products = apiProducts
-      isDemo = false
-    }
+    products = await fetchProducts()
   } catch {
-    products = demoProducts
+    products = []
   }
 
   return (
@@ -78,12 +73,6 @@ export default async function OffersPage() {
           />
         </div>
       </div>
-
-      {isDemo ? (
-        <div className="rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
-          Mostrando productos de ejemplo hasta que el equipo cargue el catalogo desde el panel.
-        </div>
-      ) : null}
 
       <ProductCatalog products={products} initialOffer="offers" />
     </section>

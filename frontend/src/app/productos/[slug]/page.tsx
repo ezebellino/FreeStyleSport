@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { publicApiUrl } from "@/lib/api"
 import {
-  demoProducts,
   getProductAudienceLabel,
   getProductCategoryLabel,
   type Product,
@@ -57,11 +56,11 @@ async function fetchProduct(slug: string): Promise<Product | null> {
   try {
     const response = await fetch(`${publicApiUrl}/commerce/products/${slug}`, { cache: "no-store" })
     if (!response.ok) {
-      return demoProducts.find((product) => product.slug === slug) ?? null
+      return null
     }
     return response.json() as Promise<Product>
   } catch {
-    return demoProducts.find((product) => product.slug === slug) ?? null
+    return null
   }
 }
 

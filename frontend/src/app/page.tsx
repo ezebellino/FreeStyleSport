@@ -14,7 +14,7 @@ import { Reveal } from "@/components/motion/reveal"
 import { ProductCard } from "@/components/products/product-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { demoProducts, fetchProducts, type Product } from "@/lib/products"
+import { fetchProducts, type Product } from "@/lib/products"
 
 const benefitItems = [
   { label: "Envíos", description: "A todo el país", icon: TruckIcon },
@@ -51,17 +51,12 @@ function pickFeaturedProducts(products: Product[]) {
 }
 
 export default async function HomePage() {
-  let products = demoProducts
-  let isDemo = true
+  let products: Product[] = []
 
   try {
-    const apiProducts = await fetchProducts()
-    if (apiProducts.length > 0) {
-      products = apiProducts
-      isDemo = false
-    }
+    products = await fetchProducts()
   } catch {
-    products = demoProducts
+    products = []
   }
 
   const featuredProducts = pickFeaturedProducts(products)
@@ -235,9 +230,9 @@ export default async function HomePage() {
             Esta sección prioriza productos con stock y ofertas. La idea es que el cliente vea algo
             comprable apenas entra, sin tener que navegar de más.
           </p>
-          {isDemo ? (
+          {products.length === 0 ? (
             <p className="mt-4 rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
-              Mostrando productos de ejemplo hasta que el equipo cargue el catálogo desde el panel.
+              El catalogo esta listo para cargar productos reales desde el panel del administrador.
             </p>
           ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
@@ -250,11 +245,25 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {featuredProducts.length > 0 ? (
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[2rem] border bg-card p-6 shadow-sm md:p-8">
+            <Badge className="w-fit" variant="secondary">
+              Catalogo virgen
+            </Badge>
+            <h3 className="mt-4 font-display text-3xl font-black italic tracking-tight">
+              Sin productos cargados
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Cuando el administrador cargue el primer producto, va a aparecer aca y en el catalogo.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   )
