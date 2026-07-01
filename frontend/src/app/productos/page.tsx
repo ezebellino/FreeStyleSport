@@ -1,23 +1,18 @@
 import { AdminActionLink } from "@/components/auth/admin-access-gate"
 import { ProductCatalog } from "@/components/products/product-catalog"
 import { Badge } from "@/components/ui/badge"
-import { demoProducts, fetchProducts } from "@/lib/products"
+import { fetchProducts, type Product } from "@/lib/products"
 
 export default async function ProductsPage({
   searchParams,
 }: Readonly<{ searchParams: Promise<{ categoria?: string; linea?: string; q?: string }> }>) {
   const { categoria, linea, q } = await searchParams
-  let products = demoProducts
-  let isDemo = true
+  let products: Product[] = []
 
   try {
-    const apiProducts = await fetchProducts({ category: categoria, audience: linea })
-    if (apiProducts.length > 0) {
-      products = apiProducts
-      isDemo = false
-    }
+    products = await fetchProducts({ category: categoria, audience: linea })
   } catch {
-    products = demoProducts
+    products = []
   }
 
   const activeFilter = [linea, categoria].filter(Boolean).join(" / ")
@@ -39,12 +34,6 @@ export default async function ProductsPage({
         </div>
         <AdminActionLink href="/admin">Cargar producto</AdminActionLink>
       </div>
-
-      {isDemo ? (
-        <div className="rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
-          Mostrando productos de ejemplo hasta que el equipo cargue el catalogo desde el panel.
-        </div>
-      ) : null}
 
       <ProductCatalog
         key={`${categoria ?? ""}:${linea ?? ""}:${q ?? ""}`}

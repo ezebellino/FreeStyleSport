@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRightIcon, ClockIcon, CreditCardIcon, PackageCheckIcon } from "lucide-react"
+import { ArrowRightIcon, ClockIcon, CreditCardIcon, PackageCheckIcon, TagIcon } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
@@ -134,6 +134,23 @@ export function ProfileOrdersCard() {
         </p>
       ) : orders.length === 0 ? (
         <div className="mt-4 rounded-2xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
+          <div className="mb-3 rounded-2xl border border-primary/35 bg-primary/10 p-4 text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex gap-3">
+                <TagIcon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+                <div>
+                  <p className="font-black text-primary">Cupon de bienvenida activo</p>
+                  <p className="mt-1 leading-6 text-muted-foreground">
+                    Usa tu cuenta en la primera compra y el cupon BIENVENIDA10 se aplica
+                    automaticamente en el carrito.
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm">
+                <Link href="/productos">Ver productos</Link>
+              </Button>
+            </div>
+          </div>
           Todavía no tenés reservas asociadas a tu cuenta. Cuando compres logueado, las vas a ver
           acá.
         </div>

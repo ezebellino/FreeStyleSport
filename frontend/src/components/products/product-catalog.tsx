@@ -405,7 +405,9 @@ export function ProductCatalog({
 
       {filteredProducts.length === 0 ? (
         <div className="rounded-3xl border bg-secondary/40 p-6 text-sm text-muted-foreground">
-          No encontramos productos con esos filtros. Probá limpiar algún criterio.
+          {products.length === 0
+            ? "Todavia no hay productos cargados. Cuando el administrador publique el primero, va a aparecer aca."
+            : "No encontramos productos con esos filtros. Proba limpiar algun criterio."}
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
