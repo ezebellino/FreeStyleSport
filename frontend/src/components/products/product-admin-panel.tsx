@@ -40,6 +40,8 @@ type ProductFilters = {
   category: string
 }
 
+const adminProductPageSize = 25
+
 const statusLabels: Record<string, string> = {
   draft: "Borrador",
   published: "Publicado",
@@ -156,6 +158,7 @@ export function ProductAdminPanel() {
     stock: "all",
     category: "",
   })
+  const [visibleCount, setVisibleCount] = useState(adminProductPageSize)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null)
@@ -176,6 +179,11 @@ export function ProductAdminPanel() {
   }, [products])
 
   const filteredProducts = useMemo(() => filterProducts(products, filters), [filters, products])
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount],
+  )
+  const hasMoreProducts = visibleProducts.length < filteredProducts.length
 
   async function fetchProducts(refresh = false) {
     setError(null)
@@ -205,10 +213,12 @@ export function ProductAdminPanel() {
   }, [])
 
   function updateFilter<Key extends keyof ProductFilters>(key: Key, value: ProductFilters[Key]) {
+    setVisibleCount(adminProductPageSize)
     setFilters((currentFilters) => ({ ...currentFilters, [key]: value }))
   }
 
   function clearFilters() {
+    setVisibleCount(adminProductPageSize)
     setFilters({
       query: "",
       status: "all",
@@ -427,8 +437,9 @@ export function ProductAdminPanel() {
             </div>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Mostrando {filteredProducts.length} de {products.length} producto
-            {products.length === 1 ? "" : "s"}.
+            Mostrando {visibleProducts.length} de {filteredProducts.length} filtrado
+            {filteredProducts.length === 1 ? "" : "s"} ({products.length} cargado
+            {products.length === 1 ? "" : "s"}).
           </p>
         </div>
 
@@ -446,7 +457,7 @@ export function ProductAdminPanel() {
           </p>
         ) : (
           <div className="mt-4 grid gap-3">
-            {filteredProducts.map((product) => {
+            {visibleProducts.map((product) => {
               const stock = productStock(product)
               const groups = variantGroups(product)
               const mainImage = product.images[0]
@@ -587,6 +598,19 @@ export function ProductAdminPanel() {
                 </article>
               )
             })}
+            {hasMoreProducts ? (
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    setVisibleCount((currentCount) => currentCount + adminProductPageSize)
+                  }
+                >
+                  Ver más productos
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
