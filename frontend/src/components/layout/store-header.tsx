@@ -13,7 +13,7 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { useCart } from "@/components/cart/cart-provider"
 import { Badge } from "@/components/ui/badge"
@@ -72,7 +72,9 @@ export function StoreHeader() {
   const [user, setUser] = useState<PublicUser | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
   const [isAccountOpen, setIsAccountOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
   const { count: cartCount } = useCart()
 
   useEffect(() => {
@@ -110,6 +112,31 @@ export function StoreHeader() {
 
   const isStaff = user?.role === "admin" || user?.role === "superadmin"
 
+  useEffect(() => {
+    if (!isAccountOpen && !isMobileMenuOpen) return undefined
+
+    function handlePointerDown(event: PointerEvent) {
+      if (isAccountOpen && !accountMenuRef.current?.contains(event.target as Node)) {
+        setIsAccountOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsAccountOpen(false)
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [isAccountOpen, isMobileMenuOpen])
+
   async function handleLogout() {
     setIsLoggingOut(true)
     try {
@@ -134,7 +161,7 @@ export function StoreHeader() {
     <TooltipProvider>
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-4">
-          <Sheet>
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button className="md:hidden" variant="ghost" size="icon" aria-label="Abrir menú">
                 <MenuIcon data-icon="inline-start" />
@@ -145,12 +172,16 @@ export function StoreHeader() {
               <nav className="flex flex-col gap-2 pt-6">
                 {navItems.map(([label, href]) => (
                   <Button key={href} variant="ghost" asChild>
-                    <Link href={href}>{label}</Link>
+                    <Link href={href} onClick={() => setIsMobileMenuOpen(false)}>
+                      {label}
+                    </Link>
                   </Button>
                 ))}
                 {isStaff ? (
                   <Button variant="secondary" asChild>
-                    <Link href="/admin">Panel admin</Link>
+                    <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                      Panel admin
+                    </Link>
                   </Button>
                 ) : null}
               </nav>
@@ -187,7 +218,7 @@ export function StoreHeader() {
               <SearchIcon data-icon="inline-start" />
             </IconLink>
 
-            <div className="relative">
+            <div className="relative" ref={accountMenuRef}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -212,11 +243,16 @@ export function StoreHeader() {
                 </Badge>
               ) : null}
 
-              {isAccountOpen ? (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-12 z-50 w-72 rounded-2xl border bg-popover p-3 text-popover-foreground shadow-xl"
-                >
+              <div
+                role="menu"
+                aria-hidden={!isAccountOpen}
+                inert={isAccountOpen ? undefined : true}
+                className={`absolute right-0 top-12 z-50 w-72 origin-top-right rounded-2xl border bg-popover p-3 text-popover-foreground shadow-xl transition-all duration-200 ease-out ${
+                  isAccountOpen
+                    ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                    : "pointer-events-none -translate-y-2 scale-95 opacity-0"
+                }`}
+              >
                   {isAuthLoading ? (
                     <div className="rounded-xl border bg-secondary/40 p-3 text-sm text-muted-foreground">
                       Cargando tu cuenta...
@@ -325,8 +361,7 @@ export function StoreHeader() {
                       </Button>
                     </div>
                   )}
-                </div>
-              ) : null}
+              </div>
             </div>
 
             <div className="relative">
