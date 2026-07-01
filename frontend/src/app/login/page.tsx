@@ -1,5 +1,6 @@
 "use client"
 
+import { EyeIcon, EyeOffIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -75,14 +77,29 @@ export default function LoginPage() {
         </label>
         <label className="block space-y-2">
           <span className="text-sm font-medium">Contrasena</span>
-          <input
-            autoComplete="current-password"
-            className="h-11 w-full rounded-lg border bg-background px-3 text-sm"
-            name="password"
-            placeholder="Tu contrasena"
-            required
-            type="password"
-          />
+          <div className="relative">
+            <input
+              autoComplete="current-password"
+              className="h-11 w-full rounded-lg border bg-background px-3 pr-12 text-sm"
+              name="password"
+              placeholder="Tu contrasena"
+              required
+              type={showPassword ? "text" : "password"}
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((currentValue) => !currentValue)}
+            >
+              {showPassword ? (
+                <EyeOffIcon className="size-4" aria-hidden="true" />
+              ) : (
+                <EyeIcon className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </label>
         {error ? (
           <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
