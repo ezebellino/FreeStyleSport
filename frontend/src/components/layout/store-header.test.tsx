@@ -71,10 +71,7 @@ describe("StoreHeader", () => {
     fireEvent.click(screen.getByRole("button", { name: /cuenta, admin@zeqebellino.com/i }))
 
     expect(screen.getByRole("menuitem", { name: /mi perfil/i })).toHaveAttribute("href", "/perfil")
-    expect(screen.getByRole("menuitem", { name: /historial de compras/i })).toHaveAttribute(
-      "href",
-      "/perfil#pedidos",
-    )
+    expect(screen.queryByRole("menuitem", { name: /historial de compras/i })).not.toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: /panel administrador/i })).toHaveAttribute(
       "href",
       "/admin",

@@ -33,6 +33,13 @@ export type Product = {
   variants: ProductVariant[]
 }
 
+export const productVariantImageSelectedEvent = "freestyle:product-variant-image-selected"
+
+export type ProductVariantImageSelectedDetail = {
+  productSlug: string
+  imageUrl?: string | null
+}
+
 export type ProductPayload = {
   name: string
   slug: string

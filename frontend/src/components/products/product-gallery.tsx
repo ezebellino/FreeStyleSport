@@ -1,31 +1,56 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
-import type { Product } from "@/lib/products"
+import {
+  productVariantImageSelectedEvent,
+  type Product,
+  type ProductVariantImageSelectedDetail,
+} from "@/lib/products"
 
 import { ProductImage } from "./product-image"
 
 export function ProductGallery({ product }: Readonly<{ product: Product }>) {
   const images = product.images
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [selectedVariantImageUrl, setSelectedVariantImageUrl] = useState<string | null>(null)
   const selectedImage = images[selectedImageIndex]
+  const visibleImageUrl = selectedVariantImageUrl ?? selectedImage?.url
+
+  useEffect(() => {
+    function handleVariantImageSelected(event: Event) {
+      const detail = (event as CustomEvent<ProductVariantImageSelectedDetail>).detail
+      if (detail?.productSlug !== product.slug) {
+        return
+      }
+      setSelectedVariantImageUrl(detail.imageUrl || null)
+    }
+
+    window.addEventListener(productVariantImageSelectedEvent, handleVariantImageSelected)
+    return () => {
+      window.removeEventListener(productVariantImageSelectedEvent, handleVariantImageSelected)
+    }
+  }, [product.slug])
 
   return (
     <div className="space-y-3">
       <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border bg-white shadow-sm">
-        {images.length > 1 ? (
+        {selectedVariantImageUrl ? (
+          <Badge className="absolute right-4 top-4 z-10 bg-background/90 text-foreground shadow-sm">
+            Foto del color
+          </Badge>
+        ) : images.length > 1 ? (
           <Badge className="absolute right-4 top-4 z-10 bg-background/90 text-foreground shadow-sm">
             {selectedImageIndex + 1} / {images.length}
           </Badge>
         ) : null}
 
-        {selectedImage ? (
+        {visibleImageUrl ? (
           <ProductImage
-            alt={selectedImage.alt_text ?? product.name}
+            alt={selectedImage?.alt_text ?? product.name}
             className="size-full object-contain p-7 transition duration-500"
-            src={selectedImage.url}
+            src={visibleImageUrl}
           />
         ) : (
           <div className="flex size-full items-center justify-center font-display text-4xl font-black italic text-slate-500">
@@ -46,7 +71,10 @@ export function ProductGallery({ product }: Readonly<{ product: Product }>) {
                   isSelected ? "border-primary ring-2 ring-primary/45" : "border-border"
                 }`}
                 type="button"
-                onClick={() => setSelectedImageIndex(index)}
+                onClick={() => {
+                  setSelectedVariantImageUrl(null)
+                  setSelectedImageIndex(index)
+                }}
               >
                 <ProductImage
                   alt={image.alt_text ?? `${product.name} ${index + 1}`}
