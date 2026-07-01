@@ -27,6 +27,7 @@ import {
   orderMercadoPagoInitPoint,
   orderPaymentProofUrl,
   orderPaymentReference,
+  orderShippingDetails,
   type OrderRead,
 } from "@/lib/orders"
 import { getPaymentProfile } from "@/lib/payment-profile"
@@ -236,6 +237,7 @@ export default async function OrderTrackingPage({
   const paymentReference = orderPaymentReference(order)
   const paymentProofUrl = orderPaymentProofUrl(order)
   const mercadoPagoInitPoint = orderMercadoPagoInitPoint(order)
+  const shippingDetails = orderShippingDetails(order)
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
@@ -426,7 +428,18 @@ export default async function OrderTrackingPage({
                 <p className="text-muted-foreground">
                   {fulfillmentLabels[order.fulfillment_method] ?? order.fulfillment_method}
                 </p>
-                <p className="text-muted-foreground">Buenos Aires 68, Dolores</p>
+                {order.fulfillment_method === "shipping" && shippingDetails.address ? (
+                  <>
+                    <p className="text-muted-foreground">{shippingDetails.address}</p>
+                    <p className="text-muted-foreground">
+                      {[shippingDetails.city, shippingDetails.postalCode]
+                        .filter(Boolean)
+                        .join(" - ")}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">Buenos Aires 68, Dolores</p>
+                )}
               </div>
             </div>
           </div>
