@@ -8,6 +8,7 @@ import {
   SettingsIcon,
   ShoppingBagIcon,
   UserRoundIcon,
+  WalletCardsIcon,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -260,17 +261,30 @@ export function StoreHeader() {
                           </Link>
                         </Button>
                         {isStaff ? (
-                          <Button
-                            asChild
-                            variant="ghost"
-                            className="justify-start"
-                            onClick={() => setIsAccountOpen(false)}
-                          >
-                            <Link href="/admin" role="menuitem">
-                              <SettingsIcon data-icon="inline-start" />
-                              Panel administrador
-                            </Link>
-                          </Button>
+                          <>
+                            <Button
+                              asChild
+                              variant="ghost"
+                              className="justify-start"
+                              onClick={() => setIsAccountOpen(false)}
+                            >
+                              <Link href="/admin" role="menuitem">
+                                <SettingsIcon data-icon="inline-start" />
+                                Panel administrador
+                              </Link>
+                            </Button>
+                            <Button
+                              asChild
+                              variant="ghost"
+                              className="justify-start"
+                              onClick={() => setIsAccountOpen(false)}
+                            >
+                              <Link href="/admin/tesoreria" role="menuitem">
+                                <WalletCardsIcon data-icon="inline-start" />
+                                Tesorería
+                              </Link>
+                            </Button>
+                          </>
                         ) : null}
                         <Button
                           type="button"
