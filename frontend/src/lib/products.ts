@@ -217,13 +217,28 @@ export const demoProducts: Product[] = [
   },
 ]
 
-export async function fetchProducts(filters?: { category?: string; audience?: string }): Promise<Product[]> {
+export async function fetchProducts(filters?: {
+  audience?: string
+  category?: string
+  limit?: number
+  offset?: number
+  search?: string
+}): Promise<Product[]> {
   const searchParams = new URLSearchParams()
   if (filters?.category) {
     searchParams.set("category", filters.category)
   }
   if (filters?.audience) {
     searchParams.set("linea", filters.audience)
+  }
+  if (filters?.search) {
+    searchParams.set("q", filters.search)
+  }
+  if (filters?.limit) {
+    searchParams.set("limit", String(filters.limit))
+  }
+  if (filters?.offset) {
+    searchParams.set("offset", String(filters.offset))
   }
   const query = searchParams.size > 0 ? `?${searchParams.toString()}` : ""
   const response = await fetch(`${publicApiUrl}/commerce/products${query}`, {
@@ -250,7 +265,7 @@ export async function createAdminProduct(payload: ProductPayload): Promise<Produ
 }
 
 export async function listAdminProducts(): Promise<Product[]> {
-  const response = await fetch(`${publicApiUrl}/commerce/admin/products`, {
+  const response = await fetch(`${publicApiUrl}/commerce/admin/products?limit=200`, {
     credentials: "include",
   })
   if (!response.ok) {

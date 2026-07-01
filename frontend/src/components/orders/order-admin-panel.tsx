@@ -79,6 +79,8 @@ const paymentMethodFilterOptions = [
   ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
 ] as const
 
+const adminOrderPageSize = 20
+
 const fulfillmentLabels: Record<string, string> = {
   pickup: "Retiro en local",
   shipping: "Envío",
@@ -238,6 +240,7 @@ export function OrderAdminPanel() {
   const [paymentFilter, setPaymentFilter] = useState<(typeof paymentFilterOptions)[number]["value"]>("all")
   const [paymentMethodFilter, setPaymentMethodFilter] =
     useState<(typeof paymentMethodFilterOptions)[number]["value"]>("all")
+  const [visibleCount, setVisibleCount] = useState(adminOrderPageSize)
   const [error, setError] = useState<string | null>(null)
 
   const metrics = useMemo(() => {
@@ -281,6 +284,11 @@ export function OrderAdminPanel() {
       return matchesStatus && matchesPayment && matchesMethod && matchesSearch
     })
   }, [paymentFilter, paymentMethodFilter, searchTerm, sortedOrders, statusFilter])
+  const visibleOrders = useMemo(
+    () => filteredOrders.slice(0, visibleCount),
+    [filteredOrders, visibleCount],
+  )
+  const hasMoreOrders = visibleOrders.length < filteredOrders.length
 
   const hasActiveFilters =
     searchTerm.trim() !== "" ||
@@ -289,6 +297,7 @@ export function OrderAdminPanel() {
     paymentMethodFilter !== "all"
 
   function resetFilters() {
+    setVisibleCount(adminOrderPageSize)
     setSearchTerm("")
     setStatusFilter("active")
     setPaymentFilter("all")
@@ -445,7 +454,7 @@ export function OrderAdminPanel() {
             <p className="text-sm font-black">Buscar y filtrar pedidos</p>
           </div>
           <Badge variant="secondary">
-            {filteredOrders.length} de {orders.length}
+            {visibleOrders.length} de {filteredOrders.length}
           </Badge>
         </div>
 
@@ -460,7 +469,10 @@ export function OrderAdminPanel() {
                 className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 placeholder="Ej: #A1B2C3D4, Nike, 41, Juan..."
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                onChange={(event) => {
+                  setVisibleCount(adminOrderPageSize)
+                  setSearchTerm(event.target.value)
+                }}
               />
             </div>
           </label>
@@ -470,9 +482,10 @@ export function OrderAdminPanel() {
             <select
               className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
               value={statusFilter}
-              onChange={(event) =>
+              onChange={(event) => {
+                setVisibleCount(adminOrderPageSize)
                 setStatusFilter(event.target.value as (typeof statusFilterOptions)[number]["value"])
-              }
+              }}
             >
               {statusFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -487,9 +500,10 @@ export function OrderAdminPanel() {
             <select
               className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
               value={paymentFilter}
-              onChange={(event) =>
+              onChange={(event) => {
+                setVisibleCount(adminOrderPageSize)
                 setPaymentFilter(event.target.value as (typeof paymentFilterOptions)[number]["value"])
-              }
+              }}
             >
               {paymentFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -504,11 +518,12 @@ export function OrderAdminPanel() {
             <select
               className="h-10 w-full rounded-xl border bg-background px-3 text-sm"
               value={paymentMethodFilter}
-              onChange={(event) =>
+              onChange={(event) => {
+                setVisibleCount(adminOrderPageSize)
                 setPaymentMethodFilter(
                   event.target.value as (typeof paymentMethodFilterOptions)[number]["value"],
                 )
-              }
+              }}
             >
               {paymentMethodFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -542,7 +557,12 @@ export function OrderAdminPanel() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredOrders.map((order) => {
+          <p className="text-sm text-muted-foreground">
+            Mostrando {visibleOrders.length} de {filteredOrders.length} reserva
+            {filteredOrders.length === 1 ? "" : "s"} filtrada
+            {filteredOrders.length === 1 ? "" : "s"}.
+          </p>
+          {visibleOrders.map((order) => {
             const isUpdating = updatingOrderId === order.id
             const nextAction = nextStatusAction(order)
             const whatsappHref = buildWhatsAppHref(order)
@@ -786,6 +806,17 @@ export function OrderAdminPanel() {
               </article>
             )
           })}
+          {hasMoreOrders ? (
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setVisibleCount((currentCount) => currentCount + adminOrderPageSize)}
+              >
+                Ver más reservas
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 

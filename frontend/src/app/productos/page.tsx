@@ -10,7 +10,7 @@ export default async function ProductsPage({
   let products: Product[] = []
 
   try {
-    products = await fetchProducts({ category: categoria, audience: linea })
+    products = await fetchProducts({ category: categoria, audience: linea, search: q })
   } catch {
     products = []
   }

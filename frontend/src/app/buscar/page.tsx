@@ -12,7 +12,7 @@ export default async function SearchPage({
   let products: Product[] = []
 
   try {
-    products = await fetchProducts()
+    products = await fetchProducts({ search: q })
   } catch {
     products = []
   }

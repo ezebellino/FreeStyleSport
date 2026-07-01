@@ -2,7 +2,7 @@ import hashlib
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -115,8 +115,11 @@ async def products(
     session: SessionDependency,
     category: str | None = None,
     linea: str | None = None,
+    q: str | None = None,
+    limit: int = Query(60, ge=1, le=120),
+    offset: int = Query(0, ge=0),
 ) -> list[ProductRead]:
-    return list(await list_public_products(session, category, linea))
+    return list(await list_public_products(session, category, linea, q, limit, offset))
 
 
 @router.get("/products/{slug}", response_model=ProductRead)
@@ -201,17 +204,23 @@ async def my_orders(
     session: SessionDependency,
     settings: SettingsDependency,
     identity_service: IdentityServiceDependency,
+    limit: int = Query(60, ge=1, le=120),
+    offset: int = Query(0, ge=0),
 ) -> list[OrderRead]:
     user = await identity_service.current_user(request.cookies.get(settings.session_cookie_name))
-    return list(await list_orders_by_customer_email(session, user.email))
+    return list(await list_orders_by_customer_email(session, user.email, limit, offset))
 
 
 @router.get("/admin/products", response_model=list[ProductRead])
 async def admin_products(
     session: SessionDependency,
     admin: StoreAdminDependency,
+    q: str | None = None,
+    status: str | None = None,
+    limit: int = Query(200, ge=1, le=300),
+    offset: int = Query(0, ge=0),
 ) -> list[ProductRead]:
-    return list(await list_admin_products(session))
+    return list(await list_admin_products(session, q, status, limit, offset))
 
 
 @router.get("/admin/uploads/cloudinary-signature", response_model=CloudinarySignatureRead)
@@ -278,8 +287,24 @@ async def admin_update_promotion_settings(
 async def admin_orders(
     session: SessionDependency,
     admin: StoreAdminDependency,
+    q: str | None = None,
+    status: str | None = None,
+    payment_status: str | None = None,
+    payment_method: str | None = None,
+    limit: int = Query(200, ge=1, le=300),
+    offset: int = Query(0, ge=0),
 ) -> list[OrderRead]:
-    return list(await list_admin_orders(session))
+    return list(
+        await list_admin_orders(
+            session,
+            q,
+            status,
+            payment_status,
+            payment_method,
+            limit,
+            offset,
+        )
+    )
 
 
 @router.patch("/admin/orders/{order_id}", response_model=OrderRead)

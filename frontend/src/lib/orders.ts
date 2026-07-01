@@ -160,7 +160,7 @@ export async function getStoreOrder(orderId: string): Promise<OrderRead> {
 }
 
 export async function listMyOrders(): Promise<OrderRead[]> {
-  const response = await fetch(`${publicApiUrl}/commerce/my/orders`, {
+  const response = await fetch(`${publicApiUrl}/commerce/my/orders?limit=60`, {
     credentials: "include",
   })
 
@@ -177,7 +177,7 @@ export async function listMyOrders(): Promise<OrderRead[]> {
 }
 
 export async function listAdminOrders(): Promise<OrderRead[]> {
-  const response = await fetch(`${publicApiUrl}/commerce/admin/orders`, {
+  const response = await fetch(`${publicApiUrl}/commerce/admin/orders?limit=200`, {
     credentials: "include",
   })
 

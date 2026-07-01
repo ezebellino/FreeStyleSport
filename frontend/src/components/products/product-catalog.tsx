@@ -25,6 +25,8 @@ type CatalogFilters = {
   offer: "all" | "offers"
 }
 
+const catalogPageSize = 12
+
 function normalizeSearchText(value: string) {
   return value
     .normalize("NFD")
@@ -147,6 +149,7 @@ export function ProductCatalog({
     availability: "all",
     offer: initialOffer,
   })
+  const [visibleCount, setVisibleCount] = useState(catalogPageSize)
 
   const colorOptions = useMemo(
     () => uniqueSorted(products.flatMap(productColors)),
@@ -160,15 +163,22 @@ export function ProductCatalog({
     () => filterProducts(products, filters),
     [filters, products],
   )
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount],
+  )
   const offerCount = useMemo(() => products.filter(productHasOffer).length, [products])
   const availableCount = useMemo(() => products.filter(productHasStock).length, [products])
   const suggestedProduct = filters.query.trim() ? filteredProducts[0] : null
+  const hasMoreProducts = visibleProducts.length < filteredProducts.length
 
   function updateFilter<Key extends keyof CatalogFilters>(key: Key, value: CatalogFilters[Key]) {
+    setVisibleCount(catalogPageSize)
     setFilters((currentFilters) => ({ ...currentFilters, [key]: value }))
   }
 
   function applyQuickSearch(query: string) {
+    setVisibleCount(catalogPageSize)
     setFilters((currentFilters) => ({
       ...currentFilters,
       query,
@@ -176,6 +186,7 @@ export function ProductCatalog({
   }
 
   function clearFilters() {
+    setVisibleCount(catalogPageSize)
     setFilters({
       query: "",
       category: "",
@@ -410,10 +421,27 @@ export function ProductCatalog({
             : "No encontramos productos con esos filtros. Proba limpiar algun criterio."}
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {visibleProducts.length} de {filteredProducts.length} producto
+            {filteredProducts.length === 1 ? "" : "s"}.
+          </p>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+          {hasMoreProducts ? (
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setVisibleCount((currentCount) => currentCount + catalogPageSize)}
+              >
+                Ver más productos
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
