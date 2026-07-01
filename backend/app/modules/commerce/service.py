@@ -5,6 +5,10 @@ from decimal import ROUND_HALF_UP, Decimal
 from urllib.parse import parse_qsl
 
 import httpx
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.modules.commerce.models import (
@@ -27,9 +31,6 @@ from app.modules.commerce.schemas import (
     ProductUpdate,
     PromotionSettingsUpdate,
 )
-from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 DEFAULT_TENANT_SLUG = "freestyle"
 WELCOME_COUPON_CODE = "BIENVENIDA10"

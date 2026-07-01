@@ -1,6 +1,7 @@
 import pytest
-from app.modules.commerce.schemas import OrderCreate
 from pydantic import ValidationError
+
+from app.modules.commerce.schemas import OrderCreate
 
 
 def test_shipping_order_requires_address_city_and_postal_code() -> None:
