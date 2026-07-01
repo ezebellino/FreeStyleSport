@@ -101,12 +101,10 @@ export function StoreHeader() {
 
     void loadUser()
     window.addEventListener(authSessionChangedEvent, handleSessionChanged)
-    window.addEventListener("focus", handleSessionChanged)
 
     return () => {
       isMounted = false
       window.removeEventListener(authSessionChangedEvent, handleSessionChanged)
-      window.removeEventListener("focus", handleSessionChanged)
     }
   }, [])
 
