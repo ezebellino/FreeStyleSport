@@ -2,7 +2,7 @@ import hashlib
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -28,6 +28,7 @@ from app.modules.commerce.service import (
     create_mercado_pago_preference,
     create_order,
     create_product,
+    delete_product,
     get_mercado_pago_payment,
     get_order_by_id,
     get_payment_profile,
@@ -335,3 +336,21 @@ async def admin_update_product(
     )
     await session.commit()
     return product
+
+
+@router.delete("/admin/products/{product_id}", status_code=204)
+async def admin_delete_product(
+    product_id: str,
+    request: Request,
+    session: SessionDependency,
+    admin: StoreAdminDependency,
+) -> Response:
+    await delete_product(session, product_id)
+    await record_audit_event(
+        session,
+        request,
+        "commerce.product_deleted",
+        getattr(admin, "id", None),
+    )
+    await session.commit()
+    return Response(status_code=204)

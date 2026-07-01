@@ -2,6 +2,7 @@
 
 import {
   AlertTriangleIcon,
+  Trash2Icon,
   Edit3Icon,
   EyeIcon,
   PackageIcon,
@@ -16,8 +17,10 @@ import { ProductImage } from "@/components/products/product-image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingState } from "@/components/ui/loading-state"
+import { showConfirm, showError, showSuccess } from "@/lib/alerts"
 import { formatCartPrice } from "@/lib/cart"
 import {
+  deleteAdminProduct,
   getProductAudienceLabel,
   getProductCategoryLabel,
   getProductCategoryValue,
@@ -156,6 +159,7 @@ export function ProductAdminPanel() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null)
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -250,6 +254,36 @@ export function ProductAdminPanel() {
       setError(caught instanceof Error ? caught.message : "No pudimos actualizar el producto")
     } finally {
       setUpdatingProductId(null)
+    }
+  }
+
+  async function deleteProduct(product: Product) {
+    const confirmed = await showConfirm({
+      title: "Eliminar producto",
+      text: `Vas a eliminar "${product.name}" del catalogo. Los pedidos historicos se conservan.`,
+      confirmButtonText: "Eliminar",
+    })
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingProductId(product.id)
+    setError(null)
+    try {
+      await deleteAdminProduct(product.id)
+      setProducts((currentProducts) =>
+        currentProducts.filter((currentProduct) => currentProduct.id !== product.id),
+      )
+      setSelectedProduct((currentProduct) =>
+        currentProduct?.id === product.id ? null : currentProduct,
+      )
+      void showSuccess("Producto eliminado", "Ya no aparece en el catalogo.")
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "No pudimos eliminar el producto"
+      setError(message)
+      void showError("No pudimos eliminar el producto", message)
+    } finally {
+      setDeletingProductId(null)
     }
   }
 
@@ -419,6 +453,7 @@ export function ProductAdminPanel() {
               const categoryLabel = getProductCategoryLabel(product)
               const audienceLabel = getProductAudienceLabel(product)
               const isUpdating = updatingProductId === product.id
+              const isDeleting = deletingProductId === product.id
 
               return (
                 <article
@@ -539,6 +574,15 @@ export function ProductAdminPanel() {
                         Publicar
                       </Button>
                     )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={isUpdating || isDeleting}
+                      onClick={() => void deleteProduct(product)}
+                    >
+                      <Trash2Icon data-icon="inline-start" />
+                      {isDeleting ? "Eliminando..." : "Eliminar"}
+                    </Button>
                   </div>
                 </article>
               )

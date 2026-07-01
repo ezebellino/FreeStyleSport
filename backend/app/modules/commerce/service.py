@@ -838,6 +838,18 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
     return product
 
 
+async def delete_product(session: AsyncSession, product_id: str) -> None:
+    tenant = await get_or_create_default_tenant(session)
+    product = await session.scalar(
+        select(Product).where(Product.tenant_id == tenant.id, Product.id == product_id)
+    )
+    if product is None:
+        raise ApiError(404, "product_not_found", "No encontramos ese producto")
+
+    await session.delete(product)
+    await session.flush()
+
+
 async def create_order(
     session: AsyncSession,
     payload: OrderCreate,

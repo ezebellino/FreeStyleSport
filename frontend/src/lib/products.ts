@@ -274,6 +274,17 @@ export async function updateAdminProduct(productId: string, payload: Partial<Pro
   return response.json() as Promise<Product>
 }
 
+export async function deleteAdminProduct(productId: string): Promise<void> {
+  const response = await fetch(`${publicApiUrl}/commerce/admin/products/${productId}`, {
+    method: "DELETE",
+    credentials: "include",
+  })
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(error?.message ?? "No pudimos eliminar el producto")
+  }
+}
+
 export async function uploadAdminProductImage(file: File): Promise<{ url: string; publicId?: string }> {
   const signatureResponse = await fetch(`${publicApiUrl}/commerce/admin/uploads/cloudinary-signature`, {
     credentials: "include",
