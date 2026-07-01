@@ -18,6 +18,7 @@ def test_commerce_routes_are_registered() -> None:
     assert "/commerce/products" in paths
     assert "/commerce/products/{slug}" in paths
     assert "/commerce/payment-profile" in paths
+    assert "/commerce/promotion-settings" in paths
     assert "/commerce/orders" in paths
     assert "/commerce/orders/{order_id}" in paths
     assert "/commerce/orders/{order_id}/mercado-pago/preference" in paths
@@ -26,5 +27,6 @@ def test_commerce_routes_are_registered() -> None:
     assert "/commerce/admin/products" in paths
     assert "/commerce/admin/products/{product_id}" in paths
     assert "/commerce/admin/payment-profile" in paths
+    assert "/commerce/admin/promotion-settings" in paths
     assert "/commerce/admin/orders" in paths
     assert "/commerce/admin/orders/{order_id}" in paths

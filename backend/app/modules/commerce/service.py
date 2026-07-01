@@ -19,6 +19,7 @@ from app.modules.commerce.models import (
     Product,
     ProductImage,
     ProductVariant,
+    PromotionSettings,
     Tenant,
 )
 from app.modules.commerce.schemas import (
@@ -28,6 +29,7 @@ from app.modules.commerce.schemas import (
     PaymentProfileUpdate,
     ProductCreate,
     ProductUpdate,
+    PromotionSettingsUpdate,
 )
 
 DEFAULT_TENANT_SLUG = "freestyle"
@@ -77,6 +79,90 @@ def empty_payment_profile() -> dict[str, object]:
         "instructions": None,
         "is_active": False,
     }
+
+
+def default_promotion_settings() -> dict[str, object]:
+    return {
+        "id": None,
+        "hero_badge": "Nueva temporada",
+        "hero_title": "Promos FreeStyle",
+        "hero_description": "Beneficios activos para comprar más fácil en la tienda.",
+        "welcome_coupon_enabled": True,
+        "welcome_coupon_code": WELCOME_COUPON_CODE,
+        "welcome_discount_rate": WELCOME_DISCOUNT_RATE,
+        "free_shipping_enabled": True,
+        "free_shipping_threshold": FREE_SHIPPING_THRESHOLD,
+        "gift_bonus_enabled": True,
+        "gift_bonus_threshold": GIFT_BONUS_THRESHOLD,
+        "gift_bonus_code": GIFT_BONUS_CODE,
+        "gift_bonus_rate": GIFT_BONUS_RATE,
+        "payment_promotions": (
+            "De lunes a viernes 20% con Cuenta DNI. Viernes y sábados 4 cuotas sin interés "
+            "con tarjetas de crédito del Banco Provincia."
+        ),
+        "checkout_message": "El local confirma stock y pago antes de preparar el pedido.",
+        "is_active": True,
+    }
+
+
+async def get_promotion_settings(
+    session: AsyncSession,
+) -> PromotionSettings | dict[str, object]:
+    tenant = await get_default_tenant(session)
+    if tenant is None:
+        return default_promotion_settings()
+
+    promotion_settings = await session.scalar(
+        select(PromotionSettings).where(PromotionSettings.tenant_id == tenant.id)
+    )
+    return promotion_settings if promotion_settings is not None else default_promotion_settings()
+
+
+async def get_effective_promotion_settings(session: AsyncSession) -> dict[str, object]:
+    promotion_settings = await get_promotion_settings(session)
+    if isinstance(promotion_settings, dict):
+        return promotion_settings
+
+    return {
+        "id": promotion_settings.id,
+        "hero_badge": promotion_settings.hero_badge,
+        "hero_title": promotion_settings.hero_title,
+        "hero_description": promotion_settings.hero_description,
+        "welcome_coupon_enabled": promotion_settings.welcome_coupon_enabled,
+        "welcome_coupon_code": promotion_settings.welcome_coupon_code,
+        "welcome_discount_rate": promotion_settings.welcome_discount_rate,
+        "free_shipping_enabled": promotion_settings.free_shipping_enabled,
+        "free_shipping_threshold": promotion_settings.free_shipping_threshold,
+        "gift_bonus_enabled": promotion_settings.gift_bonus_enabled,
+        "gift_bonus_threshold": promotion_settings.gift_bonus_threshold,
+        "gift_bonus_code": promotion_settings.gift_bonus_code,
+        "gift_bonus_rate": promotion_settings.gift_bonus_rate,
+        "payment_promotions": promotion_settings.payment_promotions,
+        "checkout_message": promotion_settings.checkout_message,
+        "is_active": promotion_settings.is_active,
+    }
+
+
+async def update_promotion_settings(
+    session: AsyncSession,
+    payload: PromotionSettingsUpdate,
+) -> PromotionSettings:
+    tenant = await get_or_create_default_tenant(session)
+    promotion_settings = await session.scalar(
+        select(PromotionSettings).where(PromotionSettings.tenant_id == tenant.id)
+    )
+    if promotion_settings is None:
+        promotion_settings = PromotionSettings(tenant_id=tenant.id)
+        session.add(promotion_settings)
+
+    for field, value in payload.model_dump().items():
+        if isinstance(value, str):
+            value = value.strip() or None
+        setattr(promotion_settings, field, value)
+
+    await session.commit()
+    await session.refresh(promotion_settings)
+    return promotion_settings
 
 
 async def get_payment_profile(session: AsyncSession) -> PaymentProfile | dict[str, object]:
@@ -191,9 +277,16 @@ async def _welcome_discount_for_customer(
     tenant: Tenant,
     customer_email: str | None,
     subtotal: Decimal,
+    promotion_settings: dict[str, object] | None = None,
 ) -> Decimal:
     if not customer_email or subtotal <= 0:
         return Decimal("0.00")
+    settings = promotion_settings or default_promotion_settings()
+    promotions_active = settings.get("is_active") is not False
+    welcome_enabled = promotions_active and settings.get("welcome_coupon_enabled") is not False
+    welcome_discount_rate = Decimal(
+        str(settings.get("welcome_discount_rate") or WELCOME_DISCOUNT_RATE)
+    )
 
     existing_order_id = await session.scalar(
         select(Order.id)
@@ -204,6 +297,8 @@ async def _welcome_discount_for_customer(
         has_existing_order=existing_order_id is not None,
         customer_email=customer_email,
         subtotal=subtotal,
+        enabled=welcome_enabled,
+        discount_rate=welcome_discount_rate,
     )
 
 
@@ -212,30 +307,47 @@ def calculate_welcome_discount(
     has_existing_order: bool,
     customer_email: str | None,
     subtotal: Decimal,
+    enabled: bool = True,
+    discount_rate: Decimal = WELCOME_DISCOUNT_RATE,
 ) -> Decimal:
-    if not customer_email or subtotal <= 0 or has_existing_order:
+    if not enabled or not customer_email or subtotal <= 0 or has_existing_order:
         return Decimal("0.00")
 
-    return _money(subtotal * WELCOME_DISCOUNT_RATE)
+    return _money(subtotal * discount_rate)
 
 
-def order_commercial_benefits(final_total: Decimal) -> dict[str, object]:
+def order_commercial_benefits(
+    final_total: Decimal,
+    promotion_settings: dict[str, object] | None = None,
+) -> dict[str, object]:
+    settings = promotion_settings or default_promotion_settings()
+    is_active = settings.get("is_active") is not False
+    free_shipping_enabled = is_active and settings.get("free_shipping_enabled") is not False
+    gift_bonus_enabled = is_active and settings.get("gift_bonus_enabled") is not False
+    free_shipping_threshold = Decimal(
+        str(settings.get("free_shipping_threshold") or FREE_SHIPPING_THRESHOLD)
+    )
+    gift_bonus_threshold = Decimal(
+        str(settings.get("gift_bonus_threshold") or GIFT_BONUS_THRESHOLD)
+    )
+    gift_bonus_code = str(settings.get("gift_bonus_code") or GIFT_BONUS_CODE)
+    gift_bonus_rate = Decimal(str(settings.get("gift_bonus_rate") or GIFT_BONUS_RATE))
     benefits: dict[str, object] = {}
-    if final_total > FREE_SHIPPING_THRESHOLD:
+    if free_shipping_enabled and final_total > free_shipping_threshold:
         benefits.update(
             {
                 "free_shipping": True,
                 "free_shipping_label": "Envío gratis",
-                "free_shipping_threshold": str(FREE_SHIPPING_THRESHOLD),
+                "free_shipping_threshold": str(free_shipping_threshold),
             }
         )
-    if final_total > GIFT_BONUS_THRESHOLD:
+    if gift_bonus_enabled and final_total > gift_bonus_threshold:
         benefits.update(
             {
-                "gift_coupon_code": GIFT_BONUS_CODE,
+                "gift_coupon_code": gift_bonus_code,
                 "gift_coupon_label": "Bono 10% para próxima compra",
-                "gift_coupon_rate": float(GIFT_BONUS_RATE),
-                "gift_coupon_threshold": str(GIFT_BONUS_THRESHOLD),
+                "gift_coupon_rate": float(gift_bonus_rate),
+                "gift_coupon_threshold": str(gift_bonus_threshold),
             }
         )
     return benefits
@@ -838,26 +950,34 @@ async def create_order(
         if payload.customer_email
         else None
     )
+    promotion_settings = await get_effective_promotion_settings(session)
     welcome_discount = await _welcome_discount_for_customer(
         session,
         tenant,
         registered_customer_email,
         subtotal,
+        promotion_settings,
     )
     total = _money(subtotal - welcome_discount)
     order_metadata: dict[str, object] = {"source": "storefront_cart"}
-    order_metadata.update(order_commercial_benefits(total))
+    order_metadata.update(order_commercial_benefits(total, promotion_settings))
     payment_submission = order_payment_submission_metadata(
         payment_reference=payload.payment_reference,
         payment_proof_url=payload.payment_proof_url,
     )
     order_metadata.update(payment_submission)
     if welcome_discount > 0:
+        welcome_coupon_code = str(
+            promotion_settings.get("welcome_coupon_code") or WELCOME_COUPON_CODE
+        )
+        welcome_discount_rate = Decimal(
+            str(promotion_settings.get("welcome_discount_rate") or WELCOME_DISCOUNT_RATE)
+        )
         order_metadata.update(
             {
-                "coupon_code": WELCOME_COUPON_CODE,
+                "coupon_code": welcome_coupon_code,
                 "discount_label": "Bienvenida 10%",
-                "discount_rate": float(WELCOME_DISCOUNT_RATE),
+                "discount_rate": float(welcome_discount_rate),
                 "discount_total": str(welcome_discount),
                 "discount_kind": "welcome_first_order",
             }

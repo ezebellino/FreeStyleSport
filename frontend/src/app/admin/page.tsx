@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { AdminOverview } from "@/components/admin/admin-overview"
 import { PaymentProfilePanel } from "@/components/admin/payment-profile-panel"
+import { PromotionSettingsPanel } from "@/components/admin/promotion-settings-panel"
 import { OrderAdminPanel } from "@/components/orders/order-admin-panel"
 import { ProductAdminPanel } from "@/components/products/product-admin-panel"
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +36,8 @@ export default function AdminPage() {
           </Button>
         </div>
       </div>
+
+      <PromotionSettingsPanel />
 
       <PaymentProfilePanel />
 

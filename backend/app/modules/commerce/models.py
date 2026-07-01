@@ -39,6 +39,7 @@ class Tenant(Base):
     products: Mapped[list["Product"]] = relationship(back_populates="tenant")
     orders: Mapped[list["Order"]] = relationship(back_populates="tenant")
     payment_profile: Mapped["PaymentProfile | None"] = relationship(back_populates="tenant")
+    promotion_settings: Mapped["PromotionSettings | None"] = relationship(back_populates="tenant")
 
 
 class PaymentProfile(Base):
@@ -65,6 +66,46 @@ class PaymentProfile(Base):
     )
 
     tenant: Mapped[Tenant] = relationship(back_populates="payment_profile")
+
+
+class PromotionSettings(Base):
+    __tablename__ = "commerce_promotion_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(
+        ForeignKey("commerce_tenants.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
+    hero_badge: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    hero_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    hero_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    welcome_coupon_enabled: Mapped[bool] = mapped_column(default=True)
+    welcome_coupon_code: Mapped[str] = mapped_column(String(40), default="BIENVENIDA10")
+    welcome_discount_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), default=Decimal("0.10"))
+    free_shipping_enabled: Mapped[bool] = mapped_column(default=True)
+    free_shipping_threshold: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        default=Decimal("100000.00"),
+    )
+    gift_bonus_enabled: Mapped[bool] = mapped_column(default=True)
+    gift_bonus_threshold: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        default=Decimal("200000.00"),
+    )
+    gift_bonus_code: Mapped[str] = mapped_column(String(40), default="PROXIMA10")
+    gift_bonus_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), default=Decimal("0.10"))
+    payment_promotions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checkout_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    tenant: Mapped[Tenant] = relationship(back_populates="promotion_settings")
 
 
 class Category(Base):

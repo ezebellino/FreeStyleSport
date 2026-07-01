@@ -29,9 +29,6 @@ import { buildReservationMessage, formatCartPrice } from "@/lib/cart"
 import {
   createMercadoPagoPreference,
   createStoreOrder,
-  FREE_SHIPPING_THRESHOLD,
-  GIFT_BONUS_CODE,
-  GIFT_BONUS_THRESHOLD,
   hasFreeShippingBenefit,
   listMyOrders,
   orderItemVariantDescription,
@@ -42,6 +39,13 @@ import {
   type OrderRead,
 } from "@/lib/orders"
 import { getPaymentProfile, type PaymentProfile } from "@/lib/payment-profile"
+import {
+  defaultPromotionSettings,
+  getPromotionSettings,
+  promotionNumber,
+  promotionRatePercent,
+  type PromotionSettings,
+} from "@/lib/promotion-settings"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
@@ -205,6 +209,8 @@ export function CartPageContent() {
   const [isCreatingMercadoPagoPayment, setIsCreatingMercadoPagoPayment] = useState(false)
   const [createdOrder, setCreatedOrder] = useState<OrderRead | null>(null)
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null)
+  const [promotionSettings, setPromotionSettings] =
+    useState<PromotionSettings>(defaultPromotionSettings)
   const [currentUser, setCurrentUser] = useState<PublicUser | null>(null)
   const [isWelcomeDiscountEligible, setIsWelcomeDiscountEligible] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -222,12 +228,23 @@ export function CartPageContent() {
     ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
   const shouldShowPaymentSubmission =
     ["transfer", "mercado_pago", "wallet", "card"].includes(paymentMethod)
-  const welcomeDiscount = isWelcomeDiscountEligible ? Math.round(total * 0.1) : 0
+  const promotionsActive = promotionSettings.is_active
+  const welcomeRate = promotionNumber(promotionSettings.welcome_discount_rate, 0.1)
+  const welcomeDiscount =
+    promotionsActive && promotionSettings.welcome_coupon_enabled && isWelcomeDiscountEligible
+      ? Math.round(total * welcomeRate)
+      : 0
   const checkoutTotal = Math.max(0, total - welcomeDiscount)
-  const hasFreeShippingPreview = checkoutTotal > FREE_SHIPPING_THRESHOLD
-  const hasGiftBonusPreview = checkoutTotal > GIFT_BONUS_THRESHOLD
-  const freeShippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - checkoutTotal + 1)
-  const giftBonusRemaining = Math.max(0, GIFT_BONUS_THRESHOLD - checkoutTotal + 1)
+  const freeShippingThreshold = promotionNumber(promotionSettings.free_shipping_threshold, 100000)
+  const giftBonusThreshold = promotionNumber(promotionSettings.gift_bonus_threshold, 200000)
+  const hasFreeShippingPreview =
+    promotionsActive && promotionSettings.free_shipping_enabled && checkoutTotal > freeShippingThreshold
+  const hasGiftBonusPreview =
+    promotionsActive && promotionSettings.gift_bonus_enabled && checkoutTotal > giftBonusThreshold
+  const freeShippingRemaining = Math.max(0, freeShippingThreshold - checkoutTotal + 1)
+  const giftBonusRemaining = Math.max(0, giftBonusThreshold - checkoutTotal + 1)
+  const welcomePercent = promotionRatePercent(promotionSettings.welcome_discount_rate)
+  const giftBonusPercent = promotionRatePercent(promotionSettings.gift_bonus_rate)
 
   useEffect(() => {
     let isMounted = true
@@ -267,10 +284,15 @@ export function CartPageContent() {
   useEffect(() => {
     let isMounted = true
 
-    getPaymentProfile()
-      .then((profile) => {
+    Promise.allSettled([getPaymentProfile(), getPromotionSettings()])
+      .then(([profileResult, promotionResult]) => {
         if (isMounted) {
-          setPaymentProfile(profile)
+          if (profileResult.status === "fulfilled") {
+            setPaymentProfile(profileResult.value)
+          }
+          if (promotionResult.status === "fulfilled") {
+            setPromotionSettings(promotionResult.value)
+          }
         }
       })
       .catch(() => undefined)
@@ -394,19 +416,19 @@ export function CartPageContent() {
             <div>
               <p className="text-sm font-semibold">Total estimado</p>
               <p className="text-2xl font-black">{formatCartPrice(Number(createdOrder.total))}</p>
-              {createdOrder.metadata?.coupon_code === "BIENVENIDA10" ? (
+              {createdOrder.metadata?.coupon_code ? (
                 <p className="mt-1 text-xs font-bold text-primary">
-                  Incluye 10% de bienvenida aplicado.
+                  Incluye cupón {String(createdOrder.metadata.coupon_code)} aplicado.
                 </p>
               ) : null}
               {hasFreeShippingBenefit(createdOrder) ? (
                 <p className="mt-1 text-xs font-bold text-primary">
-                  Incluye envío gratis por superar {formatCartPrice(FREE_SHIPPING_THRESHOLD)}.
+                  Incluye envío gratis.
                 </p>
               ) : null}
               {giftCouponCode ? (
                 <p className="mt-1 text-xs font-bold text-primary">
-                  Ganaste un bono 10% para tu próxima compra: {giftCouponCode}.
+                  Ganaste un bono para tu próxima compra: {giftCouponCode}.
                 </p>
               ) : null}
               {createdPaymentReference || createdPaymentProofUrl ? (
@@ -624,11 +646,12 @@ export function CartPageContent() {
                   <span>{formatCartPrice(total)}</span>
                 </div>
                 <div className="flex justify-between gap-3 text-sm font-black text-primary">
-                  <span>Bienvenida 10%</span>
+                  <span>Bienvenida {welcomePercent}%</span>
                   <span>-{formatCartPrice(welcomeDiscount)}</span>
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Cupón BIENVENIDA10 aplicado automáticamente por ser tu primera compra con cuenta.
+                  Cupón {promotionSettings.welcome_coupon_code} aplicado automáticamente por ser tu
+                  primera compra con cuenta.
                 </p>
               </div>
             ) : currentUser ? (
@@ -637,7 +660,7 @@ export function CartPageContent() {
               </p>
             ) : (
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Creá una cuenta para activar el 10% de bienvenida en tu primera compra.
+                Creá una cuenta para activar el {welcomePercent}% de bienvenida en tu primera compra.
               </p>
             )}
             <div className="mt-3 grid gap-2">
@@ -651,7 +674,7 @@ export function CartPageContent() {
                 <div className="flex items-center justify-between gap-3 text-sm font-black">
                   <span>Envío gratis</span>
                   <Badge variant={hasFreeShippingPreview ? "default" : "secondary"}>
-                    {hasFreeShippingPreview ? "Activado" : `Superá ${formatCartPrice(FREE_SHIPPING_THRESHOLD)}`}
+                    {hasFreeShippingPreview ? "Activado" : `Superá ${formatCartPrice(freeShippingThreshold)}`}
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -668,20 +691,31 @@ export function CartPageContent() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-3 text-sm font-black">
-                  <span>Bono de regalo 10%</span>
+                  <span>Bono de regalo {giftBonusPercent}%</span>
                   <Badge variant={hasGiftBonusPreview ? "default" : "secondary"}>
-                    {hasGiftBonusPreview ? "Ganado" : `Superá ${formatCartPrice(GIFT_BONUS_THRESHOLD)}`}
+                    {hasGiftBonusPreview ? "Ganado" : `Superá ${formatCartPrice(giftBonusThreshold)}`}
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   {hasGiftBonusPreview
-                    ? `Al crear la reserva queda registrado el bono ${GIFT_BONUS_CODE} para tu próxima compra.`
-                    : `Te faltan ${formatCartPrice(giftBonusRemaining)} para recibir un bono 10%.`}
+                    ? `Al crear la reserva queda registrado el bono ${promotionSettings.gift_bonus_code} para tu próxima compra.`
+                    : `Te faltan ${formatCartPrice(giftBonusRemaining)} para recibir un bono ${giftBonusPercent}%.`}
                 </p>
               </div>
             </div>
           </div>
         </div>
+
+        {promotionsActive && (promotionSettings.payment_promotions || promotionSettings.checkout_message) ? (
+          <div className="grid gap-2 rounded-2xl border bg-background/45 p-4 text-xs leading-5">
+            {promotionSettings.payment_promotions ? (
+              <p className="font-semibold text-foreground">{promotionSettings.payment_promotions}</p>
+            ) : null}
+            {promotionSettings.checkout_message ? (
+              <p className="text-muted-foreground">{promotionSettings.checkout_message}</p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="grid gap-2 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs leading-5">
           <p className="font-black text-primary">Antes de preparar el pedido</p>
