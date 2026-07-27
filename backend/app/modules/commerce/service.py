@@ -93,6 +93,7 @@ def empty_payment_profile() -> dict[str, object]:
         "account_identifier": None,
         "provider": None,
         "qr_image_url": None,
+        "payment_options": [],
         "instructions": None,
         "is_active": False,
     }
@@ -437,6 +438,34 @@ def order_payment_submission_metadata(
     if proof_url:
         metadata["payment_proof_url"] = proof_url
     return metadata
+
+
+def _payment_option_metadata(
+    payment_profile: PaymentProfile | None,
+    payment_option_code: str | None,
+) -> dict[str, object]:
+    code = payment_option_code.strip() if payment_option_code else ""
+    if not payment_profile or not code:
+        return {}
+
+    for option in payment_profile.payment_options or []:
+        option_code = option.get("code")
+        if not isinstance(option_code, str) or option_code != code:
+            continue
+        if option.get("is_active") is False:
+            return {}
+
+        metadata: dict[str, object] = {"payment_option_code": option_code}
+        for source_key, metadata_key in (
+            ("label", "payment_option_label"),
+            ("provider", "payment_option_provider"),
+        ):
+            value = option.get(source_key)
+            if isinstance(value, str) and value.strip():
+                metadata[metadata_key] = value.strip()
+        return metadata
+
+    return {}
 
 
 def _mp_headers(settings: Settings) -> dict[str, str]:
@@ -1101,6 +1130,13 @@ async def create_order(
         payment_proof_url=payload.payment_proof_url,
     )
     order_metadata.update(payment_submission)
+    if payload.payment_option_code:
+        payment_profile = await session.scalar(
+            select(PaymentProfile).where(PaymentProfile.tenant_id == tenant.id)
+        )
+        order_metadata.update(
+            _payment_option_metadata(payment_profile, payload.payment_option_code)
+        )
     if welcome_discount > 0:
         welcome_coupon_code = str(
             promotion_settings.get("welcome_coupon_code") or WELCOME_COUPON_CODE

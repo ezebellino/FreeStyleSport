@@ -11,6 +11,7 @@ import { showError, showSuccess } from "@/lib/alerts"
 import {
   getAdminPaymentProfile,
   updateAdminPaymentProfile,
+  type PaymentOption,
   type PaymentProfile,
 } from "@/lib/payment-profile"
 import { uploadAdminProductImage } from "@/lib/products"
@@ -21,8 +22,37 @@ const emptyProfile: PaymentProfile = {
   account_identifier: "",
   provider: "",
   qr_image_url: "",
+  payment_options: [
+    {
+      code: "banco-provincia",
+      label: "Banco Provincia",
+      provider: "Cuenta DNI / Banco Provincia",
+      qr_image_url: "",
+      instructions: "ElegÃ­ esta opciÃ³n si vas a pagar con Banco Provincia o Cuenta DNI.",
+      is_active: true,
+    },
+    {
+      code: "banco-nacion",
+      label: "Banco NaciÃ³n",
+      provider: "Banco NaciÃ³n",
+      qr_image_url: "",
+      instructions: "ElegÃ­ esta opciÃ³n si vas a pagar con Banco NaciÃ³n.",
+      is_active: true,
+    },
+  ],
   instructions: "",
   is_active: true,
+}
+
+function emptyPaymentOption(index: number): PaymentOption {
+  return {
+    code: `opcion-${index + 1}`,
+    label: "",
+    provider: "",
+    qr_image_url: "",
+    instructions: "",
+    is_active: true,
+  }
 }
 
 export function PaymentProfilePanel() {
@@ -36,7 +66,13 @@ export function PaymentProfilePanel() {
     setError(null)
     setIsLoading(true)
     try {
-      setProfile(await getAdminPaymentProfile())
+      const loadedProfile = await getAdminPaymentProfile()
+      setProfile({
+        ...loadedProfile,
+        payment_options: loadedProfile.payment_options?.length
+          ? loadedProfile.payment_options
+          : emptyProfile.payment_options,
+      })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No pudimos cargar los datos de pago")
     } finally {
@@ -54,6 +90,34 @@ export function PaymentProfilePanel() {
 
   function updateField(field: keyof PaymentProfile, value: string | boolean) {
     setProfile((current) => ({ ...current, [field]: value }))
+  }
+
+  function updatePaymentOption(index: number, patch: Partial<PaymentOption>) {
+    setProfile((current) => ({
+      ...current,
+      payment_options: (current.payment_options ?? []).map((option, optionIndex) =>
+        optionIndex === index ? { ...option, ...patch } : option,
+      ),
+    }))
+  }
+
+  function addPaymentOption() {
+    setProfile((current) => ({
+      ...current,
+      payment_options: [
+        ...(current.payment_options ?? []),
+        emptyPaymentOption(current.payment_options?.length ?? 0),
+      ],
+    }))
+  }
+
+  function removePaymentOption(index: number) {
+    setProfile((current) => ({
+      ...current,
+      payment_options: (current.payment_options ?? []).filter(
+        (_, optionIndex) => optionIndex !== index,
+      ),
+    }))
   }
 
   async function handleQrUpload(file: File | null) {
@@ -83,6 +147,33 @@ export function PaymentProfilePanel() {
     }
   }
 
+  async function handlePaymentOptionQrUpload(index: number, file: File | null) {
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      const message = "El QR tiene que ser una imagen."
+      setError(message)
+      void showError("No pudimos subir el QR", message)
+      return
+    }
+
+    setError(null)
+    setIsUploadingQr(true)
+    try {
+      const uploaded = await uploadAdminProductImage(file)
+      updatePaymentOption(index, { qr_image_url: uploaded.url })
+      void showSuccess("QR subido", "La opciÃ³n de pago quedÃ³ lista para guardar.")
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "No pudimos subir el QR"
+      setError(message)
+      void showError("No pudimos subir el QR", message)
+    } finally {
+      setIsUploadingQr(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
@@ -94,6 +185,16 @@ export function PaymentProfilePanel() {
         account_identifier: profile.account_identifier?.trim() || null,
         provider: profile.provider?.trim() || null,
         qr_image_url: profile.qr_image_url?.trim() || null,
+        payment_options: (profile.payment_options ?? [])
+          .map((option) => ({
+            code: option.code.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/(^-|-$)/g, ""),
+            label: option.label.trim(),
+            provider: option.provider?.trim() || null,
+            qr_image_url: option.qr_image_url?.trim() || null,
+            instructions: option.instructions?.trim() || null,
+            is_active: option.is_active,
+          }))
+          .filter((option) => option.code && option.label),
         instructions: profile.instructions?.trim() || null,
         is_active: profile.is_active,
       })
@@ -219,6 +320,133 @@ export function PaymentProfilePanel() {
                   />
                 </label>
               </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-2xl border bg-background/45 p-4 sm:col-span-2">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black">QR por banco o promociÃ³n</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  CargÃ¡ un QR por Banco Provincia, Banco NaciÃ³n u otra opciÃ³n. El cliente elige
+                  una y ve el QR correspondiente.
+                </p>
+              </div>
+              <Button type="button" variant="secondary" onClick={addPaymentOption}>
+                Agregar opciÃ³n
+              </Button>
+            </div>
+
+            <div className="grid gap-4">
+              {(profile.payment_options ?? []).map((option, index) => (
+                <div key={`${option.code}-${index}`} className="rounded-2xl border bg-card p-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-black">OpciÃ³n {index + 1}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-primary"
+                          checked={option.is_active}
+                          onChange={(event) =>
+                            updatePaymentOption(index, { is_active: event.target.checked })
+                          }
+                        />
+                        Visible
+                      </label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removePaymentOption(index)}
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-xs font-semibold">Nombre visible</span>
+                      <input
+                        className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        placeholder="Banco Provincia"
+                        value={option.label}
+                        onChange={(event) =>
+                          updatePaymentOption(index, { label: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs font-semibold">CÃ³digo interno</span>
+                      <input
+                        className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        placeholder="banco-provincia"
+                        value={option.code}
+                        onChange={(event) =>
+                          updatePaymentOption(index, { code: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2 sm:col-span-2">
+                      <span className="text-xs font-semibold">Proveedor o promo</span>
+                      <input
+                        className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        placeholder="Cuenta DNI / Banco Provincia"
+                        value={option.provider ?? ""}
+                        onChange={(event) =>
+                          updatePaymentOption(index, { provider: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2 sm:col-span-2">
+                      <span className="text-xs font-semibold">URL del QR de esta opciÃ³n</span>
+                      <input
+                        className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        placeholder="https://res.cloudinary.com/.../qr-banco.png"
+                        value={option.qr_image_url ?? ""}
+                        onChange={(event) =>
+                          updatePaymentOption(index, { qr_image_url: event.target.value })
+                        }
+                      />
+                    </label>
+                    <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+                      <Button asChild type="button" variant="secondary" disabled={isUploadingQr}>
+                        <label className="cursor-pointer">
+                          <UploadIcon data-icon="inline-start" />
+                          {isUploadingQr ? "Subiendo..." : "Subir QR"}
+                          <input
+                            className="sr-only"
+                            type="file"
+                            accept="image/*"
+                            disabled={isUploadingQr}
+                            onChange={(event) => {
+                              void handlePaymentOptionQrUpload(index, event.target.files?.[0] ?? null)
+                              event.target.value = ""
+                            }}
+                          />
+                        </label>
+                      </Button>
+                      {option.qr_image_url ? (
+                        <span className="text-xs font-semibold text-primary">QR cargado</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Sin QR propio</span>
+                      )}
+                    </div>
+                    <label className="space-y-2 sm:col-span-2">
+                      <span className="text-xs font-semibold">InstrucciÃ³n especÃ­fica</span>
+                      <textarea
+                        className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                        placeholder="UsÃ¡ esta opciÃ³n si tenÃ©s promo activa con este banco."
+                        value={option.instructions ?? ""}
+                        onChange={(event) =>
+                          updatePaymentOption(index, { instructions: event.target.value })
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

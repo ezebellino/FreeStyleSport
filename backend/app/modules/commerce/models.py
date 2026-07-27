@@ -56,6 +56,7 @@ class PaymentProfile(Base):
     account_identifier: Mapped[str | None] = mapped_column(String(80), nullable=True)
     provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
     qr_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payment_options: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

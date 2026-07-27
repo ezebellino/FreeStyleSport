@@ -13,6 +13,7 @@ export type OrderCreatePayload = {
   shipping_address?: string
   shipping_city?: string
   shipping_postal_code?: string
+  payment_option_code?: string
   payment_reference?: string
   payment_proof_url?: string
   notes?: string
@@ -109,6 +110,21 @@ export function orderPaymentReference(order: OrderRead) {
 export function orderPaymentProofUrl(order: OrderRead) {
   const proofUrl = order.metadata?.payment_proof_url
   return typeof proofUrl === "string" && proofUrl.trim() ? proofUrl.trim() : null
+}
+
+export function orderPaymentOptionLabel(order: OrderRead) {
+  const label = order.metadata?.payment_option_label
+  return typeof label === "string" && label.trim() ? label.trim() : null
+}
+
+export function orderPaymentOptionProvider(order: OrderRead) {
+  const provider = order.metadata?.payment_option_provider
+  return typeof provider === "string" && provider.trim() ? provider.trim() : null
+}
+
+export function orderPaymentOptionCode(order: OrderRead) {
+  const code = order.metadata?.payment_option_code
+  return typeof code === "string" && code.trim() ? code.trim() : null
 }
 
 export function orderShippingDetails(order: OrderRead) {

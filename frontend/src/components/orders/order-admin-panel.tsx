@@ -31,6 +31,8 @@ import {
   listAdminOrders,
   orderGiftCouponCode,
   orderItemVariantDescription,
+  orderPaymentOptionLabel,
+  orderPaymentOptionProvider,
   orderPaymentProofUrl,
   orderPaymentReference,
   orderShippingDetails,
@@ -131,6 +133,8 @@ function buildWhatsAppHref(order: OrderRead) {
   const giftCouponCode = orderGiftCouponCode(order)
   const paymentReference = orderPaymentReference(order)
   const paymentProofUrl = orderPaymentProofUrl(order)
+  const paymentOptionLabel = orderPaymentOptionLabel(order)
+  const paymentOptionProvider = orderPaymentOptionProvider(order)
   const shippingDetails = orderShippingDetails(order)
   const itemLines = order.items
     .map((item) => {
@@ -144,6 +148,8 @@ function buildWhatsAppHref(order: OrderRead) {
     itemLines,
     "",
     `Total: ${formatCartPrice(Number(order.total))}`,
+    paymentOptionLabel ? `Opción de pago: ${paymentOptionLabel}.` : null,
+    paymentOptionProvider ? `Proveedor: ${paymentOptionProvider}.` : null,
     hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
     giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
     shippingDetails.address ? `Envío: ${shippingDetails.address}` : null,
@@ -258,6 +264,8 @@ function orderSearchText(order: OrderRead) {
       order.customer_email,
       order.customer_phone,
       paymentMethodLabels[order.payment_method],
+      orderPaymentOptionLabel(order),
+      orderPaymentOptionProvider(order),
       fulfillmentLabels[order.fulfillment_method],
       shippingDetails.address,
       shippingDetails.city,
@@ -666,6 +674,8 @@ export function OrderAdminPanel() {
             const giftCouponCode = orderGiftCouponCode(order)
             const paymentReference = orderPaymentReference(order)
             const paymentProofUrl = orderPaymentProofUrl(order)
+            const paymentOptionLabel = orderPaymentOptionLabel(order)
+            const paymentOptionProvider = orderPaymentOptionProvider(order)
             const hasSubmittedPayment = hasPaymentSubmission(order)
             const shippingDetails = orderShippingDetails(order)
 
@@ -724,6 +734,12 @@ export function OrderAdminPanel() {
                         <p className="text-xs text-muted-foreground">
                           {paymentStatusLabel(order.payment_status)}
                         </p>
+                        {paymentOptionLabel ? (
+                          <p className="mt-1 text-xs font-semibold text-primary">
+                            {paymentOptionLabel}
+                            {paymentOptionProvider ? ` · ${paymentOptionProvider}` : ""}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="rounded-2xl border bg-card p-3">
                         <TruckIcon className="size-4 text-primary" aria-hidden="true" />

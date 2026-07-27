@@ -17,7 +17,17 @@ class PaymentProfileBase(BaseModel):
     account_identifier: str | None = Field(default=None, max_length=80)
     provider: str | None = Field(default=None, max_length=80)
     qr_image_url: str | None = Field(default=None, max_length=1000)
+    payment_options: list["PaymentOptionInput"] = Field(default_factory=list, max_length=12)
     instructions: str | None = Field(default=None, max_length=1000)
+    is_active: bool = True
+
+
+class PaymentOptionInput(BaseModel):
+    code: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
+    label: str = Field(min_length=1, max_length=120)
+    provider: str | None = Field(default=None, max_length=80)
+    qr_image_url: str | None = Field(default=None, max_length=1000)
+    instructions: str | None = Field(default=None, max_length=500)
     is_active: bool = True
 
 
@@ -184,6 +194,7 @@ class OrderCreate(BaseModel):
     shipping_address: str | None = Field(default=None, max_length=240)
     shipping_city: str | None = Field(default=None, max_length=120)
     shipping_postal_code: str | None = Field(default=None, max_length=40)
+    payment_option_code: str | None = Field(default=None, max_length=80)
     payment_reference: str | None = Field(default=None, max_length=240)
     payment_proof_url: str | None = Field(default=None, max_length=1000)
     notes: str | None = Field(default=None, max_length=1000)
