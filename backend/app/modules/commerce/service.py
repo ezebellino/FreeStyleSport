@@ -6,6 +6,7 @@ from urllib.parse import parse_qsl
 
 import httpx
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -29,6 +30,7 @@ from app.modules.commerce.schemas import (
     PaymentProfileUpdate,
     ProductCreate,
     ProductUpdate,
+    ProductVariantInput,
     PromotionSettingsUpdate,
 )
 
@@ -291,6 +293,48 @@ def _set_order_stock_reserved(order: Order, is_reserved: bool) -> None:
 
 def _money(value: Decimal) -> Decimal:
     return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+
+
+def validate_product_variants(variants: Sequence[ProductVariantInput]) -> None:
+    seen_skus: set[str] = set()
+    seen_options: set[tuple[str, str]] = set()
+
+    for variant in variants:
+        sku = variant.sku.strip().lower() if isinstance(variant.sku, str) else ""
+        if sku:
+            if sku in seen_skus:
+                raise ApiError(
+                    409,
+                    "product_variant_sku_duplicate",
+                    "Hay variantes con el mismo SKU. Cambialo o dejalo vacio en una de ellas.",
+                )
+            seen_skus.add(sku)
+
+        color = variant.attributes.get("color")
+        size = variant.attributes.get("talle")
+        option_key = (
+            color.strip().lower() if isinstance(color, str) else "",
+            size.strip().lower() if isinstance(size, str) else variant.label.strip().lower(),
+        )
+        if option_key in seen_options:
+            raise ApiError(
+                409,
+                "product_variant_duplicate",
+                "Hay variantes repetidas con el mismo color y talle.",
+            )
+        seen_options.add(option_key)
+
+
+async def _commit_product_save(session: AsyncSession) -> None:
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ApiError(
+            409,
+            "product_save_conflict",
+            "No pudimos guardar porque hay datos repetidos en el producto.",
+        ) from exc
 
 
 async def _welcome_discount_for_customer(
@@ -784,6 +828,7 @@ async def get_public_product_by_slug(session: AsyncSession, slug: str) -> Produc
 
 async def create_product(session: AsyncSession, payload: ProductCreate) -> Product:
     tenant = await get_or_create_default_tenant(session)
+    validate_product_variants(payload.variants)
     existing = await session.scalar(
         select(Product).where(Product.tenant_id == tenant.id, Product.slug == payload.slug)
     )
@@ -827,7 +872,7 @@ async def create_product(session: AsyncSession, payload: ProductCreate) -> Produ
         for variant in payload.variants
     ]
     session.add(product)
-    await session.commit()
+    await _commit_product_save(session)
     await session.refresh(product, attribute_names=["category", "images", "variants"])
     return product
 
@@ -875,6 +920,9 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
         ]
 
     if payload.variants is not None:
+        validate_product_variants(payload.variants)
+        product.variants = []
+        await session.flush()
         product.variants = [
             ProductVariant(
                 sku=variant.sku,
@@ -888,7 +936,7 @@ async def update_product(session: AsyncSession, product_id: str, payload: Produc
             for variant in payload.variants
         ]
 
-    await session.commit()
+    await _commit_product_save(session)
     await session.refresh(product, attribute_names=["category", "images", "variants"])
     return product
 

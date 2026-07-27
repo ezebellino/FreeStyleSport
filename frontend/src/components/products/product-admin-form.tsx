@@ -329,12 +329,21 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
     }
 
     const variantKeys = new Set<string>()
+    const variantSkus = new Set<string>()
     for (const variant of normalizedVariants) {
       const key = `${String(variant.attributes.color ?? "").toLowerCase()}|${String(variant.attributes.talle ?? "").toLowerCase()}`
       if (variantKeys.has(key)) {
         return "Hay variantes repetidas con el mismo color y talle. Unificá el stock o quitá duplicados."
       }
       variantKeys.add(key)
+
+      const sku = variant.sku?.trim().toLowerCase()
+      if (sku) {
+        if (variantSkus.has(sku)) {
+          return "Hay variantes con el mismo SKU. Cambiá el SKU o dejalo vacío en una de ellas."
+        }
+        variantSkus.add(sku)
+      }
     }
 
     return null
@@ -345,7 +354,8 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
     setMessage(null)
     setError(null)
 
-    const form = new FormData(event.currentTarget)
+    const formElement = event.currentTarget
+    const form = new FormData(formElement)
     const name = String(form.get("name") ?? "")
     const category = String(form.get("category") ?? "")
     const audience = String(form.get("audience") ?? "unisex")
@@ -420,7 +430,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
       )
       onSaved?.(savedProduct)
       if (!product) {
-        event.currentTarget.reset()
+        formElement.reset()
         setVariants([emptyVariantDraft()])
         setImageUrls([""])
       }
