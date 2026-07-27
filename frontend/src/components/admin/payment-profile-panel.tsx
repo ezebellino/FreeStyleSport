@@ -28,15 +28,15 @@ const emptyProfile: PaymentProfile = {
       label: "Banco Provincia",
       provider: "Cuenta DNI / Banco Provincia",
       qr_image_url: "",
-      instructions: "ElegÃ­ esta opciÃ³n si vas a pagar con Banco Provincia o Cuenta DNI.",
+      instructions: "Elegí esta opción si vas a pagar con Banco Provincia o Cuenta DNI.",
       is_active: true,
     },
     {
       code: "banco-nacion",
-      label: "Banco NaciÃ³n",
-      provider: "Banco NaciÃ³n",
+      label: "Banco Nación",
+      provider: "Banco Nación",
       qr_image_url: "",
-      instructions: "ElegÃ­ esta opciÃ³n si vas a pagar con Banco NaciÃ³n.",
+      instructions: "Elegí esta opción si vas a pagar con Banco Nación.",
       is_active: true,
     },
   ],
@@ -164,7 +164,7 @@ export function PaymentProfilePanel() {
     try {
       const uploaded = await uploadAdminProductImage(file)
       updatePaymentOption(index, { qr_image_url: uploaded.url })
-      void showSuccess("QR subido", "La opciÃ³n de pago quedÃ³ lista para guardar.")
+      void showSuccess("QR subido", "La opción de pago quedó lista para guardar.")
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "No pudimos subir el QR"
       setError(message)
@@ -326,14 +326,14 @@ export function PaymentProfilePanel() {
           <div className="space-y-4 rounded-2xl border bg-background/45 p-4 sm:col-span-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-black">QR por banco o promociÃ³n</p>
+                <p className="text-sm font-black">QR por banco o promoción</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  CargÃ¡ un QR por Banco Provincia, Banco NaciÃ³n u otra opciÃ³n. El cliente elige
+                  Cargá un QR por Banco Provincia, Banco Nación u otra opción. El cliente elige
                   una y ve el QR correspondiente.
                 </p>
               </div>
               <Button type="button" variant="secondary" onClick={addPaymentOption}>
-                Agregar opciÃ³n
+                Agregar opción
               </Button>
             </div>
 
@@ -341,7 +341,7 @@ export function PaymentProfilePanel() {
               {(profile.payment_options ?? []).map((option, index) => (
                 <div key={`${option.code}-${index}`} className="rounded-2xl border bg-card p-4">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-black">OpciÃ³n {index + 1}</p>
+                    <p className="text-sm font-black">Opción {index + 1}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="flex items-center gap-2 text-xs font-semibold">
                         <input
@@ -378,7 +378,7 @@ export function PaymentProfilePanel() {
                       />
                     </label>
                     <label className="space-y-2">
-                      <span className="text-xs font-semibold">CÃ³digo interno</span>
+                      <span className="text-xs font-semibold">Código interno</span>
                       <input
                         className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                         placeholder="banco-provincia"
@@ -400,7 +400,7 @@ export function PaymentProfilePanel() {
                       />
                     </label>
                     <label className="space-y-2 sm:col-span-2">
-                      <span className="text-xs font-semibold">URL del QR de esta opciÃ³n</span>
+                      <span className="text-xs font-semibold">URL del QR de esta opción</span>
                       <input
                         className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                         placeholder="https://res.cloudinary.com/.../qr-banco.png"
@@ -434,10 +434,10 @@ export function PaymentProfilePanel() {
                       )}
                     </div>
                     <label className="space-y-2 sm:col-span-2">
-                      <span className="text-xs font-semibold">InstrucciÃ³n especÃ­fica</span>
+                      <span className="text-xs font-semibold">Instrucción específica</span>
                       <textarea
                         className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                        placeholder="UsÃ¡ esta opciÃ³n si tenÃ©s promo activa con este banco."
+                        placeholder="Usá esta opción si tenés promo activa con este banco."
                         value={option.instructions ?? ""}
                         onChange={(event) =>
                           updatePaymentOption(index, { instructions: event.target.value })
