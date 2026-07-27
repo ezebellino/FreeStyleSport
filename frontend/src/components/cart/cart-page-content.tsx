@@ -853,9 +853,9 @@ export function CartPageContent() {
 
             {shouldShowPaymentOptions ? (
               <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4">
-                <p className="text-sm font-black text-primary">ElegÃ­ banco o promociÃ³n</p>
+                <p className="text-sm font-black text-primary">Elegí banco o promoción</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  El descuento lo aplica el banco o billetera al pagar. SeleccionÃ¡ la opciÃ³n que vas
+                  El descuento lo aplica el banco o billetera al pagar. Seleccioná la opción que vas
                   a usar para ver el QR correcto.
                 </p>
                 <div className="mt-3 grid gap-2">
