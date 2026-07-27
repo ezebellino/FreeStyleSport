@@ -33,13 +33,20 @@ import {
   listMyOrders,
   orderItemVariantDescription,
   orderGiftCouponCode,
+  orderPaymentOptionLabel,
+  orderPaymentOptionProvider,
   orderPaymentProofUrl,
   orderPaymentReference,
   orderShippingDetails,
   type OrderCreatePayload,
   type OrderRead,
 } from "@/lib/orders"
-import { getPaymentProfile, type PaymentProfile } from "@/lib/payment-profile"
+import {
+  activePaymentOptions,
+  findPaymentOption,
+  getPaymentProfile,
+  type PaymentProfile,
+} from "@/lib/payment-profile"
 import {
   defaultPromotionSettings,
   getPromotionSettings,
@@ -170,6 +177,8 @@ function fulfillmentInstruction(fulfillmentMethod: OrderCreatePayload["fulfillme
 
 function buildOrderConfirmationMessage(order: OrderRead) {
   const giftCouponCode = orderGiftCouponCode(order)
+  const paymentOptionLabel = orderPaymentOptionLabel(order)
+  const paymentOptionProvider = orderPaymentOptionProvider(order)
   const paymentReference = orderPaymentReference(order)
   const paymentProofUrl = orderPaymentProofUrl(order)
   const shippingDetails = orderShippingDetails(order)
@@ -186,6 +195,8 @@ function buildOrderConfirmationMessage(order: OrderRead) {
     itemLines,
     "",
     `Total: ${formatCartPrice(Number(order.total))}`,
+    paymentOptionLabel ? `Opción de pago: ${paymentOptionLabel}.` : null,
+    paymentOptionProvider ? `Proveedor: ${paymentOptionProvider}.` : null,
     hasFreeShippingBenefit(order) ? "Beneficio: envío gratis incluido." : null,
     giftCouponCode ? `Bono para próxima compra: ${giftCouponCode} (10%).` : null,
     shippingDetails.address ? `Envío: ${shippingDetails.address}` : null,
@@ -206,6 +217,7 @@ export function CartPageContent() {
   const [customerEmail, setCustomerEmail] = useState("")
   const [paymentMethod, setPaymentMethod] =
     useState<OrderCreatePayload["payment_method"]>("to_confirm")
+  const [paymentOptionCode, setPaymentOptionCode] = useState("")
   const [fulfillmentMethod, setFulfillmentMethod] =
     useState<OrderCreatePayload["fulfillment_method"]>("pickup")
   const [shippingAddress, setShippingAddress] = useState("")
@@ -243,9 +255,20 @@ export function CartPageContent() {
     (!isShippingSelected || hasShippingDetails)
   const shouldShowPaymentProfile =
     Boolean(paymentProfile?.is_active) &&
-    ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
+    ["transfer", "wallet", "card"].includes(paymentMethod)
   const shouldShowPaymentSubmission =
     ["transfer", "mercado_pago", "wallet", "card"].includes(paymentMethod)
+  const availablePaymentOptions = activePaymentOptions(paymentProfile)
+  const shouldShowPaymentOptions = shouldShowPaymentProfile && availablePaymentOptions.length > 0
+  const selectedPaymentOption =
+    findPaymentOption(paymentProfile, paymentOptionCode) ?? availablePaymentOptions[0] ?? null
+  const displayedPaymentProvider = selectedPaymentOption?.provider || paymentProfile?.provider
+  const displayedPaymentAlias = paymentProfile?.alias
+  const displayedPaymentHolder = paymentProfile?.account_holder
+  const displayedPaymentIdentifier = paymentProfile?.account_identifier
+  const displayedPaymentQr = selectedPaymentOption?.qr_image_url || paymentProfile?.qr_image_url
+  const displayedPaymentInstructions =
+    selectedPaymentOption?.instructions || paymentProfile?.instructions
   const promotionsActive = promotionSettings.is_active
   const welcomeRate = promotionNumber(promotionSettings.welcome_discount_rate, 0.1)
   const welcomeDiscount =
@@ -351,6 +374,7 @@ export function CartPageContent() {
         shipping_address: isShippingSelected ? shippingAddress.trim() : undefined,
         shipping_city: isShippingSelected ? shippingCity.trim() : undefined,
         shipping_postal_code: isShippingSelected ? shippingPostalCode.trim() : undefined,
+        payment_option_code: shouldShowPaymentOptions ? selectedPaymentOption?.code : undefined,
         payment_reference: paymentReference.trim() || undefined,
         payment_proof_url: paymentProofUrl.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -814,7 +838,10 @@ export function CartPageContent() {
                     name="payment-method"
                     value={option.value}
                     checked={paymentMethod === option.value}
-                    onChange={() => setPaymentMethod(option.value)}
+                    onChange={() => {
+                      setPaymentMethod(option.value)
+                      setPaymentOptionCode("")
+                    }}
                   />
                   <span className="block text-sm font-bold">{option.label}</span>
                   <span className="mt-1 block text-xs leading-5 text-muted-foreground">
@@ -823,6 +850,43 @@ export function CartPageContent() {
                 </label>
               ))}
             </div>
+
+            {shouldShowPaymentOptions ? (
+              <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4">
+                <p className="text-sm font-black text-primary">ElegÃ­ banco o promociÃ³n</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  El descuento lo aplica el banco o billetera al pagar. SeleccionÃ¡ la opciÃ³n que vas
+                  a usar para ver el QR correcto.
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {availablePaymentOptions.map((option) => (
+                    <label
+                      key={option.code}
+                      className={`cursor-pointer rounded-2xl border p-3 transition ${
+                        selectedPaymentOption?.code === option.code
+                          ? "border-primary bg-background"
+                          : "bg-card hover:border-primary/60"
+                      }`}
+                    >
+                      <input
+                        className="sr-only"
+                        type="radio"
+                        name="payment-option"
+                        value={option.code}
+                        checked={selectedPaymentOption?.code === option.code}
+                        onChange={() => setPaymentOptionCode(option.code)}
+                      />
+                      <span className="block text-sm font-bold">{option.label}</span>
+                      {option.provider ? (
+                        <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                          {option.provider}
+                        </span>
+                      ) : null}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {shouldShowPaymentSubmission ? (
               <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4">
@@ -974,27 +1038,29 @@ export function CartPageContent() {
 
           {shouldShowPaymentProfile && paymentProfile ? (
             <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm leading-6">
-              <p className="font-black text-primary">Datos de pago del local</p>
+              <p className="font-black text-primary">
+                {selectedPaymentOption ? `QR para ${selectedPaymentOption.label}` : "Datos de pago del local"}
+              </p>
               <div className="mt-2 grid gap-1 text-muted-foreground">
-                {paymentProfile.provider ? <p>Medio: {paymentProfile.provider}</p> : null}
-                {paymentProfile.alias ? <p>Alias: {paymentProfile.alias}</p> : null}
-                {paymentProfile.account_holder ? <p>Titular: {paymentProfile.account_holder}</p> : null}
-                {paymentProfile.account_identifier ? (
-                  <p>CBU/CVU: {paymentProfile.account_identifier}</p>
+                {displayedPaymentProvider ? <p>Medio: {displayedPaymentProvider}</p> : null}
+                {displayedPaymentAlias ? <p>Alias: {displayedPaymentAlias}</p> : null}
+                {displayedPaymentHolder ? <p>Titular: {displayedPaymentHolder}</p> : null}
+                {displayedPaymentIdentifier ? (
+                  <p>CBU/CVU: {displayedPaymentIdentifier}</p>
                 ) : null}
               </div>
-              {paymentProfile.qr_image_url ? (
+              {displayedPaymentQr ? (
                 <div className="mt-3 aspect-square overflow-hidden rounded-2xl border bg-white">
                   <ProductImage
                     alt="QR de pago del local"
                     className="size-full object-contain p-3"
-                    src={paymentProfile.qr_image_url}
+                    src={displayedPaymentQr}
                   />
                 </div>
               ) : null}
-              {paymentProfile.instructions ? (
+              {displayedPaymentInstructions ? (
                 <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                  {paymentProfile.instructions}
+                  {displayedPaymentInstructions}
                 </p>
               ) : null}
             </div>

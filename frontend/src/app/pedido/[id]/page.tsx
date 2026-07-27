@@ -25,12 +25,15 @@ import {
   orderGiftCouponCode,
   orderItemVariantDescription,
   orderMercadoPagoInitPoint,
+  orderPaymentOptionCode,
+  orderPaymentOptionLabel,
+  orderPaymentOptionProvider,
   orderPaymentProofUrl,
   orderPaymentReference,
   orderShippingDetails,
   type OrderRead,
 } from "@/lib/orders"
-import { getPaymentProfile } from "@/lib/payment-profile"
+import { findPaymentOption, getPaymentProfile } from "@/lib/payment-profile"
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
@@ -196,7 +199,7 @@ function formatOrderDate(value?: string) {
 }
 
 function canShowPaymentProfile(paymentMethod: string) {
-  return ["transfer", "mercado_pago", "wallet"].includes(paymentMethod)
+  return ["transfer", "wallet", "card"].includes(paymentMethod)
 }
 
 async function loadOrder(orderId: string): Promise<OrderRead | null> {
@@ -236,6 +239,17 @@ export default async function OrderTrackingPage({
   const giftCouponCode = orderGiftCouponCode(order)
   const paymentReference = orderPaymentReference(order)
   const paymentProofUrl = orderPaymentProofUrl(order)
+  const paymentOptionCode = orderPaymentOptionCode(order)
+  const paymentOptionLabel = orderPaymentOptionLabel(order)
+  const paymentOptionProvider = orderPaymentOptionProvider(order)
+  const selectedPaymentOption = paymentOptionCode
+    ? findPaymentOption(paymentProfile, paymentOptionCode)
+    : null
+  const displayedPaymentProvider =
+    selectedPaymentOption?.provider || paymentOptionProvider || paymentProfile?.provider
+  const displayedPaymentQr = selectedPaymentOption?.qr_image_url || paymentProfile?.qr_image_url
+  const displayedPaymentInstructions =
+    selectedPaymentOption?.instructions || paymentProfile?.instructions
   const mercadoPagoInitPoint = orderMercadoPagoInitPoint(order)
   const shippingDetails = orderShippingDetails(order)
 
@@ -494,27 +508,29 @@ export default async function OrderTrackingPage({
 
           {shouldShowPaymentProfile && paymentProfile ? (
             <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm leading-6">
-              <p className="font-black text-primary">Datos para pagar</p>
+              <p className="font-black text-primary">
+                {paymentOptionLabel ? `Datos para pagar con ${paymentOptionLabel}` : "Datos para pagar"}
+              </p>
               <div className="mt-2 grid gap-1 text-muted-foreground">
-                {paymentProfile.provider ? <p>Medio: {paymentProfile.provider}</p> : null}
+                {displayedPaymentProvider ? <p>Medio: {displayedPaymentProvider}</p> : null}
                 {paymentProfile.alias ? <p>Alias: {paymentProfile.alias}</p> : null}
                 {paymentProfile.account_holder ? <p>Titular: {paymentProfile.account_holder}</p> : null}
                 {paymentProfile.account_identifier ? (
                   <p>CBU/CVU: {paymentProfile.account_identifier}</p>
                 ) : null}
               </div>
-              {paymentProfile.qr_image_url ? (
+              {displayedPaymentQr ? (
                 <div className="mt-3 aspect-square overflow-hidden rounded-2xl border bg-white">
                   <ProductImage
                     alt="QR de pago del local"
                     className="size-full object-contain p-3"
-                    src={paymentProfile.qr_image_url}
+                    src={displayedPaymentQr}
                   />
                 </div>
               ) : null}
-              {paymentProfile.instructions ? (
+              {displayedPaymentInstructions ? (
                 <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                  {paymentProfile.instructions}
+                  {displayedPaymentInstructions}
                 </p>
               ) : null}
             </div>

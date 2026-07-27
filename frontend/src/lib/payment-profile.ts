@@ -1,5 +1,14 @@
 import { publicApiUrl } from "./api"
 
+export type PaymentOption = {
+  code: string
+  label: string
+  provider?: string | null
+  qr_image_url?: string | null
+  instructions?: string | null
+  is_active: boolean
+}
+
 export type PaymentProfile = {
   id?: string | null
   alias?: string | null
@@ -7,11 +16,25 @@ export type PaymentProfile = {
   account_identifier?: string | null
   provider?: string | null
   qr_image_url?: string | null
+  payment_options?: PaymentOption[]
   instructions?: string | null
   is_active: boolean
 }
 
 export type PaymentProfilePayload = Omit<PaymentProfile, "id">
+
+export function activePaymentOptions(profile?: PaymentProfile | null) {
+  return (profile?.payment_options ?? []).filter(
+    (option) => option.is_active && option.label.trim(),
+  )
+}
+
+export function findPaymentOption(
+  profile: PaymentProfile | null | undefined,
+  code: string,
+) {
+  return activePaymentOptions(profile).find((option) => option.code === code) ?? null
+}
 
 async function parsePaymentProfileResponse(response: Response, fallbackMessage: string) {
   if (!response.ok) {
