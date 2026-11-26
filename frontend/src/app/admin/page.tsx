@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { AdminOverview } from "@/components/admin/admin-overview"
+import { AdminGuide } from "@/components/admin/admin-guide"
 import { AdminUsersPanel } from "@/components/admin/admin-users-panel"
 import { PaymentProfilePanel } from "@/components/admin/payment-profile-panel"
 import { PromotionSettingsPanel } from "@/components/admin/promotion-settings-panel"
@@ -27,8 +28,11 @@ export default async function AdminPage({
   return (
     <AdminAccessGate>
       <section className="mx-auto grid max-w-6xl gap-5 px-4 py-8 md:px-8">
-        <h1 className="font-display text-4xl font-black italic">Panel administrativo</h1>
-        <nav aria-label="Secciones del panel" className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-display text-4xl font-black italic">Panel administrativo</h1>
+          <AdminGuide key={active} section={active} />
+        </div>
+        <nav id="admin-sections" aria-label="Secciones del panel" className="flex flex-wrap gap-2">
           {sections.map(([key, label]) => (
             <Button key={key} asChild variant={active === key ? "default" : "secondary"}>
               <Link href={`/admin?seccion=${key}`} aria-current={active === key ? "page" : undefined}>

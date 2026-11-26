@@ -316,7 +316,7 @@ export function ProductAdminPanel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" onClick={() => selectProduct(null)}>
+            <Button id="admin-new-product" type="button" variant="secondary" onClick={() => selectProduct(null)}>
               Nuevo producto
             </Button>
             <Button
