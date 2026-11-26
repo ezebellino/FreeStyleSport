@@ -10,7 +10,7 @@ import {
   SearchIcon,
 } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { ProductAdminForm } from "@/components/products/product-admin-form"
 import { ProductImage } from "@/components/products/product-image"
@@ -151,7 +151,7 @@ function filterProducts(products: Product[], filters: ProductFilters) {
 
 export function ProductAdminPanel() {
   const [products, setProducts] = useState<Product[]>([])
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>()
   const [filters, setFilters] = useState<ProductFilters>({
     query: "",
     status: "all",
@@ -164,7 +164,6 @@ export function ProductAdminPanel() {
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null)
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const formRef = useRef<HTMLDivElement>(null)
 
   const metrics = useMemo(() => {
     const published = products.filter((product) => product.status === "published").length
@@ -237,14 +236,11 @@ export function ProductAdminPanel() {
         product.id === savedProduct.id ? savedProduct : product,
       )
     })
-    setSelectedProduct(savedProduct)
+    setSelectedProduct(undefined)
   }
 
   function selectProduct(product: Product | null) {
     setSelectedProduct(product)
-    window.setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    }, 0)
   }
 
   async function changeProductStatus(product: Product, status: ProductPayload["status"]) {
@@ -298,7 +294,13 @@ export function ProductAdminPanel() {
   }
 
   return (
-    <section className="space-y-4">
+    selectedProduct !== undefined ? (
+      <ProductAdminForm
+        product={selectedProduct}
+        onCancel={() => setSelectedProduct(undefined)}
+        onSaved={handleSaved}
+      />
+    ) : <section className="space-y-4">
       <div className="rounded-[2rem] border bg-card p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -495,7 +497,6 @@ export function ProductAdminPanel() {
                       ) : stock <= 2 ? (
                         <Badge variant="destructive">Bajo stock</Badge>
                       ) : null}
-                      {selectedProduct?.id === product.id ? <Badge variant="outline">Editando</Badge> : null}
                     </div>
 
                     <p className="text-sm text-muted-foreground">
@@ -615,14 +616,6 @@ export function ProductAdminPanel() {
         )}
       </div>
 
-      <div ref={formRef}>
-        <ProductAdminForm
-          key={selectedProduct?.id ?? "new"}
-          product={selectedProduct}
-          onCancel={selectedProduct ? () => setSelectedProduct(null) : undefined}
-          onSaved={handleSaved}
-        />
-      </div>
     </section>
   )
 }

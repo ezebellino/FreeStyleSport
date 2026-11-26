@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  CheckCircle2Icon,
   ImageIcon,
   Layers3Icon,
   PackagePlusIcon,
@@ -271,6 +270,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
     setVariants((currentVariants) => {
       const shouldReplaceDefault =
         currentVariants.length === 1 &&
+        !product && currentVariants[0].label === "Único" && !currentVariants[0].imageUrl &&
         !currentVariants[0].color.trim() &&
         currentVariants[0].stock === 0 &&
         !currentVariants[0].sku.trim() &&
@@ -711,14 +711,9 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         description="Cada combinación de color y talle tiene su propio stock. El cliente elegirá color y luego talle."
       >
         <div className="space-y-4">
-          <div className="rounded-2xl border bg-card/70 p-4">
-            <div>
-              <h5 className="font-semibold">Generar variantes rápido</h5>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Cargá colores y talles una sola vez. El sistema crea todas las combinaciones para
-                que después ajustes stock, SKU o precio.
-              </p>
-            </div>
+          <details className="rounded-2xl border p-4">
+            <summary className="cursor-pointer font-semibold">Cargar varios colores y talles juntos</summary>
+            <p className="mt-2 text-sm text-muted-foreground">Separá los valores con comas. Cada talle recibirá el stock que indiques.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-xs font-medium text-muted-foreground">Colores</span>
@@ -774,7 +769,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
                 Generar
               </Button>
             </div>
-          </div>
+          </details>
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -788,7 +783,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
 
           <div className="grid gap-3">
             {groupedVariants.map((group) => (
-              <div key={group.key} className="rounded-2xl border bg-card/70 p-4">
+              <div key={group.variants[0].index} className="rounded-2xl border bg-card/70 p-4">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <label className="space-y-2">
                     <span className="text-xs font-medium text-muted-foreground">Color del grupo</span>
@@ -818,18 +813,8 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
                   {group.variants.map(({ index, variant }) => (
                     <div
                       key={`${group.key}-${index}`}
-                      className="grid gap-3 rounded-2xl border bg-background/60 p-3 md:grid-cols-[5rem_1fr_0.7fr_1fr_1fr_auto]"
+                      className="grid grid-cols-[1fr_1fr_auto] items-end gap-2 rounded-xl border p-2"
                     >
-                      <div className="space-y-1">
-                        <span className="text-xs font-medium text-muted-foreground">Foto</span>
-                        <div className="aspect-square overflow-hidden rounded-xl border bg-white">
-                          <ProductImage
-                            alt={`Imagen de ${displayVariantLabel(variant, `Variante ${index + 1}`)}`}
-                            className="size-full object-contain p-1"
-                            src={variant.imageUrl || validImageUrls[0]}
-                          />
-                        </div>
-                      </div>
                       <label className="space-y-1">
                         <span className="text-xs font-medium text-muted-foreground">Talle / número</span>
                         <input
@@ -849,6 +834,28 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
                           value={variant.stock}
                         />
                       </label>
+                      <Button
+                        className="self-end"
+                        disabled={variants.length === 1}
+                        onClick={() => removeVariant(index)}
+                        type="button"
+                        variant="ghost"
+                      >
+                        Quitar
+                      </Button>
+                      <details className="col-span-full">
+                        <summary className="cursor-pointer text-sm font-medium">Foto, precio y código de esta variante</summary>
+                        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <span className="text-xs font-medium text-muted-foreground">Foto</span>
+                        <div className="size-16 overflow-hidden rounded-xl border bg-white">
+                          <ProductImage
+                            alt={`Imagen de ${displayVariantLabel(variant, `Variante ${index + 1}`)}`}
+                            className="size-full object-contain p-1"
+                            src={variant.imageUrl || validImageUrls[0]}
+                          />
+                        </div>
+                      </div>
                       <label className="space-y-1">
                         <span className="text-xs font-medium text-muted-foreground">SKU</span>
                         <input
@@ -869,16 +876,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
                           value={variant.price}
                         />
                       </label>
-                      <Button
-                        className="self-end"
-                        disabled={variants.length === 1}
-                        onClick={() => removeVariant(index)}
-                        type="button"
-                        variant="ghost"
-                      >
-                        Quitar
-                      </Button>
-                      <label className="space-y-1 md:col-start-2 md:col-span-4">
+                      <label className="space-y-1 sm:col-span-2">
                         <span className="text-xs font-medium text-muted-foreground">Imagen propia de esta variante</span>
                         <input
                           className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:border-primary"
@@ -901,38 +899,13 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
                           type="file"
                         />
                       </label>
+                        </div>
+                      </details>
                     </div>
                   ))}
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        icon={CheckCircle2Icon}
-        title="5. Revisión antes de guardar"
-        description="El sistema revisa errores comunes para evitar publicar productos incompletos."
-      >
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border bg-card/70 p-4">
-            <p className="font-bold">Fotos</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {validImageUrls.length > 0 ? `${validImageUrls.length} imagen(es) cargada(s).` : "Sin imágenes."}
-            </p>
-          </div>
-          <div className="rounded-2xl border bg-card/70 p-4">
-            <p className="font-bold">Variantes</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {variants.length} variante{variants.length === 1 ? "" : "s"} / stock total {stockTotal}.
-            </p>
-          </div>
-          <div className="rounded-2xl border bg-card/70 p-4">
-            <p className="font-bold">Publicación</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Publicado requiere precio, imagen y stock disponible.
-            </p>
           </div>
         </div>
       </SectionCard>

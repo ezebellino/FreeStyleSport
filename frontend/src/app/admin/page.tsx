@@ -7,62 +7,43 @@ import { PromotionSettingsPanel } from "@/components/admin/promotion-settings-pa
 import { AdminAccessGate } from "@/components/auth/admin-access-gate"
 import { OrderAdminPanel } from "@/components/orders/order-admin-panel"
 import { ProductAdminPanel } from "@/components/products/product-admin-panel"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
-export default function AdminPage() {
+const sections = [
+  ["productos", "Productos"],
+  ["pedidos", "Pedidos"],
+  ["resumen", "Resumen"],
+  ["promociones", "Promociones"],
+  ["pagos", "Datos de pago"],
+] as const
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ seccion?: string }>
+}) {
+  const { seccion } = await searchParams
+  const active = sections.find(([key]) => key === seccion)?.[0] ?? "productos"
   return (
     <AdminAccessGate>
-      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col gap-8 px-4 py-10 md:px-8 md:py-16">
-      <div className="space-y-4">
-        <Badge>Gestión FreeStyle</Badge>
-        <h1 className="font-display text-4xl font-black italic tracking-tight sm:text-6xl">
-          Panel administrativo
-        </h1>
-        <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
-          Gestión diaria de productos, ventas, pedidos y atención del local.
-        </p>
-      </div>
-
-      <AdminOverview />
-
-      <AdminUsersPanel />
-
-      <div className="rounded-[2rem] border bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-black">Tesorería y venta inteligente</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Recaudación web, productos más vendidos, cobros por método y alertas de reposición.
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/admin/tesoreria">Ver números del negocio</Link>
-          </Button>
-        </div>
-      </div>
-
-      <PromotionSettingsPanel />
-
-      <PaymentProfilePanel />
-
-      <div className="space-y-4">
-        <OrderAdminPanel />
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-black">Catálogo</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            El rol admin puede cargar y editar nombre, precio, imagen, descripción, categoría y stock.
-          </p>
-        </div>
-        <ProductAdminPanel />
-      </div>
-
-      <Button asChild variant="secondary" className="w-fit">
-        <Link href="/">Volver a la tienda</Link>
-      </Button>
+      <section className="mx-auto grid max-w-6xl gap-5 px-4 py-8 md:px-8">
+        <h1 className="font-display text-4xl font-black italic">Panel administrativo</h1>
+        <nav aria-label="Secciones del panel" className="flex flex-wrap gap-2">
+          {sections.map(([key, label]) => (
+            <Button key={key} asChild variant={active === key ? "default" : "secondary"}>
+              <Link href={`/admin?seccion=${key}`} aria-current={active === key ? "page" : undefined}>
+                {label}
+              </Link>
+            </Button>
+          ))}
+          <Button asChild variant="secondary"><Link href="/admin/tesoreria">Tesorería</Link></Button>
+        </nav>
+        {active === "productos" && <ProductAdminPanel />}
+        {active === "pedidos" && <OrderAdminPanel />}
+        {active === "resumen" && <><AdminOverview /><AdminUsersPanel /></>}
+        {active === "promociones" && <PromotionSettingsPanel />}
+        {active === "pagos" && <PaymentProfilePanel />}
+        <Link href="/" className="w-fit text-sm underline">Volver a la tienda</Link>
       </section>
     </AdminAccessGate>
   )
