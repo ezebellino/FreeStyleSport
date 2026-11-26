@@ -484,7 +484,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
   }
 
   return (
-    <form className="space-y-4 rounded-[2rem] border bg-card p-5 shadow-sm md:p-6" onSubmit={handleSubmit}>
+    <form id="admin-product-editor" className="space-y-4 rounded-[2rem] border bg-card p-5 shadow-sm md:p-6" onSubmit={handleSubmit}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Badge className="mb-3 w-fit">{isEditing ? "Edición" : "Carga guiada"}</Badge>
@@ -648,7 +648,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         description="La primera imagen será la portada del catálogo. Conviene usar fotos claras y centradas."
       >
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div id="product-image-actions" className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => addImageUrl()}>
               Agregar URL
             </Button>
@@ -711,7 +711,7 @@ export function ProductAdminForm({ product, onCancel, onSaved }: Readonly<Produc
         description="Cada combinación de color y talle tiene su propio stock. El cliente elegirá color y luego talle."
       >
         <div className="space-y-4">
-          <details className="rounded-2xl border p-4">
+          <details id="product-bulk-variants" className="rounded-2xl border p-4">
             <summary className="cursor-pointer font-semibold">Cargar varios colores y talles juntos</summary>
             <p className="mt-2 text-sm text-muted-foreground">Separá los valores con comas. Cada talle recibirá el stock que indiques.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
